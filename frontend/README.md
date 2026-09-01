@@ -152,13 +152,13 @@ graph TD
 ### Prerequisites
 
 - Node.js 18+
-- A running backend API (see [backend/README.md](https://github.com/Othunderlight/FounderStackCRM/blob/main/backend/README.md))
+- A running backend API (see [backend/README.md](https://github.com/Othunderlight/FounderStackCRM-open/blob/main/backend/README.md))
 
 ### Setup
 
 ```bash
 # Clone the repo
-git clone https://github.com/Othunderlight/FounderStackCRM.git
+git clone https://github.com/Othunderlight/FounderStackCRM-open.git
 cd FounderStackCRM/frontend
 
 # Install dependencies

@@ -14,7 +14,7 @@ A FastAPI-based [Model Context Protocol](https://modelcontextprotocol.io/) serve
 
 ## What is This?
 
-This MCP server acts as a bridge between AI assistants and the [FounderStack CRM backend](https://github.com/Othunderlight/FounderStackCRM). It exposes CRM operations (people, companies, tasks, notes, activities, interactions) as MCP tools that any compatible AI client can call — with full authentication via JWT tokens or API keys.
+This MCP server acts as a bridge between AI assistants and the [FounderStack CRM backend](https://github.com/Othunderlight/FounderStackCRM-open). It exposes CRM operations (people, companies, tasks, notes, activities, interactions) as MCP tools that any compatible AI client can call — with full authentication via JWT tokens or API keys.
 
 ```
 ┌──────────────┐         ┌──────────────┐         ┌──────────────┐
@@ -207,7 +207,7 @@ sequenceDiagram
 ### Prerequisites
 
 - Python 3.11+
-- A running [FounderStack CRM backend](https://github.com/Othunderlight/FounderStackCRM/blob/main/backend/README.md)
+- A running [FounderStack CRM backend](https://github.com/Othunderlight/FounderStackCRM-open/blob/main/backend/README.md)
 
 ### 1. Install Dependencies
 

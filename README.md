@@ -82,7 +82,7 @@ opensourced/
 
 Django REST Framework backend with multi-tenant architecture, RBAC, triple auth (JWT + API Keys + Session), background job scheduling, and external system sync.
 
-**Full documentation:** [backend/README.md](https://github.com/Othunderlight/FounderStackCRM/blob/main/backend/README.md)
+**Full documentation:** [backend/README.md](https://github.com/Othunderlight/FounderStackCRM-open/blob/main/backend/README.md)
 
 | Layer | Technology |
 |-------|-----------|
@@ -108,7 +108,7 @@ Django REST Framework backend with multi-tenant architecture, RBAC, triple auth 
 
 React 19 SPA with a Notion-style dark mode interface, data grids, kanban boards, context drawers, and full Arabic RTL support.
 
-**Full documentation:** [frontend/README.md](https://github.com/Othunderlight/FounderStackCRM/blob/main/frontend/README.md)
+**Full documentation:** [frontend/README.md](https://github.com/Othunderlight/FounderStackCRM-open/blob/main/frontend/README.md)
 
 | Layer | Technology |
 |-------|-----------|
@@ -136,7 +136,7 @@ React 19 SPA with a Notion-style dark mode interface, data grids, kanban boards,
 
 FastAPI-based Model Context Protocol server that gives AI assistants (Claude, Cursor, Gemini CLI) secure, authenticated access to CRM data via JWT or API key.
 
-**Full documentation:** [mcp-server/README.md](https://github.com/Othunderlight/FounderStackCRM/blob/main/mcp-server/README.md)
+**Full documentation:** [mcp-server/README.md](https://github.com/Othunderlight/FounderStackCRM-open/blob/main/mcp-server/README.md)
 
 | Layer | Technology |
 |-------|-----------|
@@ -251,9 +251,9 @@ cp mcp-server/.env.example mcp-server/.env
 
 Then edit each file with your own credentials. See the individual READMEs for full variable documentation:
 
-- [Backend env vars](https://github.com/Othunderlight/FounderStackCRM/blob/main/backend/README.md#environment-variables)
-- [Frontend env vars](https://github.com/Othunderlight/FounderStackCRM/blob/main/frontend/README.md#environment-variables)
-- [MCP Server env vars](https://github.com/Othunderlight/FounderStackCRM/blob/main/mcp-server/README.md#configuration-reference)
+- [Backend env vars](https://github.com/Othunderlight/FounderStackCRM-open/blob/main/backend/README.md#environment-variables)
+- [Frontend env vars](https://github.com/Othunderlight/FounderStackCRM-open/blob/main/frontend/README.md#environment-variables)
+- [MCP Server env vars](https://github.com/Othunderlight/FounderStackCRM-open/blob/main/mcp-server/README.md#configuration-reference)
 
 ---
 
