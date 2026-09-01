@@ -1,0 +1,199 @@
+{
+  "name": "Two-way sync between Pipedrive and HubSpot",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "position": [
+        32,
+        256
+      ],
+      "typeVersion": 1,
+      "id": "bbe48447-84cc-4384-a029-07433d7136e2"
+    },
+    {
+      "parameters": {
+        "resource": "person",
+        "operation": "getAll",
+        "returnAll": true,
+        "additionalFields": {}
+      },
+      "name": "Pipedrive",
+      "type": "n8n-nodes-base.pipedrive",
+      "position": [
+        368,
+        96
+      ],
+      "typeVersion": 1,
+      "id": "e6c9d649-9d6a-4f8a-a0ff-2bb1d972b770"
+    },
+    {
+      "parameters": {
+        "resource": "person",
+        "name": "={{$json[\"properties\"][\"firstname\"][\"value\"]}}",
+        "additionalFields": {
+          "email": [
+            "={{$json[\"identity-profiles\"][0][\"identities\"][0][\"value\"]}}"
+          ]
+        }
+      },
+      "name": "Update Pipedrive",
+      "type": "n8n-nodes-base.pipedrive",
+      "position": [
+        1168,
+        144
+      ],
+      "typeVersion": 1,
+      "id": "73ad465e-96da-4439-b27c-48a2bd0c5868"
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "getAll",
+        "returnAll": true,
+        "additionalFields": {}
+      },
+      "name": "HubSpot",
+      "type": "n8n-nodes-base.hubspot",
+      "position": [
+        352,
+        416
+      ],
+      "typeVersion": 1,
+      "id": "6b58b9d5-a328-42da-8dd1-492d38f939ba"
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "email": "={{$json[\"email\"][0][\"value\"]}}",
+        "additionalFields": {
+          "firstName": "={{$json[\"first_name\"]}}"
+        }
+      },
+      "name": "Update HubSpot",
+      "type": "n8n-nodes-base.hubspot",
+      "position": [
+        1168,
+        352
+      ],
+      "typeVersion": 1,
+      "id": "e843f3ef-4cab-4207-8d8e-4db2e5ac9043"
+    },
+    {
+      "parameters": {
+        "mode": "removeKeyMatches",
+        "propertyName1": "identity-profiles[0].identities[0].value",
+        "propertyName2": "email[0].value"
+      },
+      "name": "Merge1",
+      "type": "n8n-nodes-base.merge",
+      "position": [
+        768,
+        144
+      ],
+      "typeVersion": 1,
+      "id": "722527ba-2ecb-4002-8dc0-5d829cc8a7cd"
+    },
+    {
+      "parameters": {
+        "mode": "removeKeyMatches",
+        "propertyName1": "email[0].value",
+        "propertyName2": "identity-profiles[0].identities[0].value"
+      },
+      "name": "Merge2",
+      "type": "n8n-nodes-base.merge",
+      "position": [
+        768,
+        352
+      ],
+      "typeVersion": 1,
+      "id": "c4ba0c32-63a3-4528-ab40-23b4df5c3bb1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cron": {
+      "main": [
+        [
+          {
+            "node": "Pipedrive",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HubSpot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Update Pipedrive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "Update HubSpot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HubSpot": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Pipedrive": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "61fbc42d-9597-434b-8284-035eeef278e7",
+  "meta": {
+    "templateId": "1333",
+    "instanceId": "65d1a339b442578b9f48438a32f521de239e91fb025b2f8c26e5d9e359ded7b8"
+  },
+  "id": "0y1kApENNhjQ-Y37VVZh1",
+  "tags": []
+}

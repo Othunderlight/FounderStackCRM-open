@@ -1,0 +1,69 @@
+{% extends "base-email.html" %}
+{% load i18n %}
+{% load account %}
+
+{% block head_title %}{% trans "Confirm Email Address" %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-[#f9f9f8] flex items-center justify-center p-6 font-sans">
+    <div class="max-w-[480px] w-full">
+        <!-- Main Card -->
+        <div class="bg-white border border-gray-200/50 rounded-[40px] p-12 shadow-sm text-center">
+            
+            <!-- Logo -->
+            <div class="mb-10">
+                <span class="text-2xl font-bold tracking-tight text-gray-900">FounderStack</span>
+            </div>
+
+            {% if confirmation %}
+                <h1 class="text-[32px] font-semibold text-gray-900 mb-4 tracking-tight">
+                    {% trans "Confirm your email" %}
+                </h1>
+                
+                <p class="text-gray-500 text-lg mb-10 leading-relaxed px-4">
+                    {% blocktrans with confirmation.email_address.email as email %}
+                    Please confirm that <span class="text-gray-900 font-medium">{{ email }}</span> is yours to secure your account.
+                    {% endblocktrans %}
+                </p>
+
+                <form method="post" action="{% url 'account_confirm_email' confirmation.key %}">
+                    {% csrf_token %}
+                    <button type="submit" class="w-full bg-[#3b82f6] hover:bg-[#2563eb] text-white font-semibold py-4 px-8 rounded-2xl transition-all active:scale-[0.98] shadow-md shadow-blue-500/10 text-lg">
+                        {% trans 'Confirm Email Address' %}
+                    </button>
+                </form>
+            {% else %}
+                <div class="py-4">
+                    <h1 class="text-2xl font-semibold text-gray-900 mb-4">{% trans "Link Expired" %}</h1>
+                    <p class="text-gray-500 mb-8">{% trans 'This e-mail confirmation link expired or is invalid.' %}</p>
+                    <a href="/" class="inline-flex items-center justify-center px-6 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors font-medium">
+                        Return to app
+                    </a>
+                </div>
+            {% endif %}
+
+            <!-- Secondary Footer inside card -->
+            <div class="mt-12 pt-8 border-t border-gray-50">
+                <p class="text-sm text-gray-400 leading-relaxed">
+                    If you didn't request this email, you can safely ignore it.<br>
+                    If you're experiencing issues, please contact <a href="https://t.me/Omar_Gatara" class="text-gray-600 underline underline-offset-4 hover:text-gray-900">Support</a>.
+                </p>
+            </div>
+        </div>
+
+        <!-- System Footer -->
+        <p class="text-center text-gray-400 text-xs mt-8 uppercase tracking-widest font-medium">
+            &copy; 2026 FounderStack CRM
+        </p>
+    </div>
+</div>
+
+<style>
+    body { background-color: #f9f9f8; }
+    /* Industrial aesthetic scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #f9f9f8; }
+    ::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #d4d4d4; }
+</style>
+{% endblock %}

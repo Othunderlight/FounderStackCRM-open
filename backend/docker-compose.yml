@@ -1,0 +1,81 @@
+services:
+  web:
+    build: .
+    container_name: founderstack-crm-dj
+    ports:
+      - "8010:8000"
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    command: >
+      sh -c "mkdir -p /app/logs &&
+             python manage.py collectstatic --noinput &&
+             python manage.py makemigrations users app dashboard &&
+             python manage.py makemigrations users app integrations &&
+             python manage.py makemigrations app &&
+             python manage.py makemigrations integrations &&
+             python manage.py migrate users &&
+             python manage.py migrate app &&
+             python manage.py migrate integrations &&
+             python manage.py migrate dashboard &&
+             gunicorn core.wsgi:application --bind 0.0.0.0:8000 --access-logfile /app/logs/gunicorn_access.log --error-logfile /app/logs/gunicorn_error.log"
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+      - ./logs:/app/logs
+      - ./jwt_private_key.pem:/app/jwt_private_key.pem:ro
+      - ./jwt_public_key.pem:/app/jwt_public_key.pem:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy # Wait for Redis to be healthy
+    networks:
+      - app-network
+      - redis-network
+
+  db:
+    image: postgres:15
+    container_name: founderstack-crm-postgres
+    restart: always
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  redis:
+    image: redis:alpine
+    container_name: foundertsack-crm-redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - redis-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  static_volume:
+  pgdata:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge
+  redis-network:
+    driver: bridge

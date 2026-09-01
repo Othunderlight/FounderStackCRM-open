@@ -1,0 +1,5 @@
+{
+  "name": "FounderStack",
+  "description": "A context-first CRM for solo founders featuring a Notion-style dark mode interface, data grids, kanban boards, and AI-assisted relationship management.",
+  "requestFramePermissions": []
+}

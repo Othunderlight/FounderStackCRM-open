@@ -1,0 +1,23 @@
+[project]
+name = "mcp-remote"
+version = "0.1.0"
+description = "MCP Remote Server"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.12",
+    "fastmcp>=3.0.0",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.25.0",
+    "uvicorn>=0.24.0",
+]
+
+[project.scripts]
+mcp-server = "src.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]

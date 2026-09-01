@@ -1,0 +1,395 @@
+{
+  "name": "Two-way sync between FounderStack CRM and Notion",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        32,
+        256
+      ],
+      "typeVersion": 1.1,
+      "id": "schedule-trigger-001"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://your-api.example.com/api/companies/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "sync_id__isempty",
+              "value": "true"
+            },
+            {
+              "name": "page_size",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Get Unsynced Companies",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        250,
+        100
+      ],
+      "typeVersion": 4.1,
+      "id": "get-companies-001",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_API_KEY_CREDENTIAL_ID",
+          "name": "FounderStack API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://your-api.example.com/api/people/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "sync_id__isempty",
+              "value": "true"
+            },
+            {
+              "name": "page_size",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Get Unsynced People",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        250,
+        300
+      ],
+      "typeVersion": 4.1,
+      "id": "get-people-001",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_API_KEY_CREDENTIAL_ID",
+          "name": "FounderStack API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.notion.com/v1/pages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{$json}}",
+        "options": {}
+      },
+      "name": "Create Company in Notion",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        500,
+        100
+      ],
+      "typeVersion": 4.1,
+      "id": "create-notion-company-001",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_NOTION_TOKEN_CREDENTIAL_ID",
+          "name": "Notion Integration Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.notion.com/v1/pages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{$json}}",
+        "options": {}
+      },
+      "name": "Create Person in Notion",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        500,
+        300
+      ],
+      "typeVersion": 4.1,
+      "id": "create-notion-person-001",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_NOTION_TOKEN_CREDENTIAL_ID",
+          "name": "Notion Integration Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Transform FounderStack Company data to Notion format\nconst items = $input.all()[0].json.results || [];\nconst NOTION_COMPANY_DB_ID = 'YOUR_COMPANY_DATABASE_ID';\n\nreturn items.map(company => {\n  return {\n    json: {\n      parent: {\n        database_id: NOTION_COMPANY_DB_ID\n      },\n      properties: {\n        'Name': {\n          title: [{\n            text: {\n              content: company.name\n            }\n          }]\n        },\n        'Domain': {\n          url: company.domain || null\n        },\n        'Employees': {\n          number: company.employees ? parseInt(company.employees) : null\n        },\n        'Location': {\n          rich_text: [{\n            text: {\n              content: company.location || ''\n            }\n          }]\n        },\n        'LinkedIn': {\n          url: company.linkedin || null\n        },\n        'ARR': {\n          rich_text: [{\n            text: {\n              content: company.arr || ''\n            }\n          }]\n        },\n        'ICP': {\n          checkbox: company.icp || false\n        },\n        'FounderStack ID': {\n          rich_text: [{\n            text: {\n              content: company.id\n            }\n          }]\n        }\n      }\n    },\n    crm_id: company.id\n  };\n});"
+      },
+      "name": "Transform Company for Notion",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        375,
+        100
+      ],
+      "typeVersion": 2,
+      "id": "transform-company-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Transform FounderStack Person data to Notion format\nconst items = $input.all()[0].json.results || [];\nconst NOTION_PEOPLE_DB_ID = 'YOUR_PEOPLE_DATABASE_ID';\n\nreturn items.map(person => {\n  return {\n    json: {\n      parent: {\n        database_id: NOTION_PEOPLE_DB_ID\n      },\n      properties: {\n        'Name': {\n          title: [{\n            text: {\n              content: person.name\n            }\n          }]\n        },\n        'Email': {\n          email: person.email || null\n        },\n        'Phone': {\n          phone_number: person.phone || null\n        },\n        'Job Title': {\n          rich_text: [{\n            text: {\n              content: person.job_title || ''\n            }\n          }]\n        },\n        'City': {\n          rich_text: [{\n            text: {\n              content: person.city || ''\n            }\n          }]\n        },\n        'LinkedIn': {\n          url: person.linkedin || null\n        },\n        'Conversion Rate': {\n          number: person.conversion_rate || 0\n        },\n        'Stage': {\n          select: {\n            name: person.stage || 'Lead'\n          }\n        },\n        'Lead Type': {\n          select: {\n            name: person.lead_type || 'Prospect'\n          }\n        },\n        'Lead Source': {\n          select: {\n            name: person.lead_source || 'Outbound'\n          }\n        },\n        'Last Action': {\n          rich_text: [{\n            text: {\n              content: person.last_action || ''\n            }\n          }]\n        },\n        'Recommended Action': {\n          rich_text: [{\n            text: {\n              content: person.recommended_action || ''\n            }\n          }]\n        },\n        'FounderStack ID': {\n          rich_text: [{\n            text: {\n              content: person.id\n            }\n          }]\n        }\n      }\n    },\n    crm_id: person.id\n  };\n});"
+      },
+      "name": "Transform Person for Notion",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        375,
+        300
+      ],
+      "typeVersion": 2,
+      "id": "transform-person-001"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://your-api.example.com/api/companies/{{ $('Transform Company for Notion').item.json.crm_id }}/sync/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\"sync_id\": \"{{ $json.id }}\", \"sync_status\": \"synced\"}",
+        "options": {}
+      },
+      "name": "Update Company Sync Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        750,
+        100
+      ],
+      "typeVersion": 4.1,
+      "id": "update-company-sync-001",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_API_KEY_CREDENTIAL_ID",
+          "name": "FounderStack API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://your-api.example.com/api/people/{{ $('Transform Person for Notion').item.json.crm_id }}/sync/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\"sync_id\": \"{{ $json.id }}\", \"sync_status\": \"synced\"}",
+        "options": {}
+      },
+      "name": "Update Person Sync Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        750,
+        300
+      ],
+      "typeVersion": 4.1,
+      "id": "update-person-sync-001",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_API_KEY_CREDENTIAL_ID",
+          "name": "FounderStack API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check if there are unsynced companies\nconst companies = $input.all()[0].json;\nif (companies.count === 0 || companies.results.length === 0) {\n  return []; // No companies to sync\n}\nreturn [{ json: companies }];"
+      },
+      "name": "Check Companies Count",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        250,
+        150
+      ],
+      "typeVersion": 2,
+      "id": "check-companies-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check if there are unsynced people\nconst people = $input.all()[0].json;\nif (people.count === 0 || people.results.length === 0) {\n  return []; // No people to sync\n}\nreturn [{ json: people }];"
+      },
+      "name": "Check People Count",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        250,
+        350
+      ],
+      "typeVersion": 2,
+      "id": "check-people-001"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Unsynced Companies",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Unsynced People",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Unsynced Companies": {
+      "main": [
+        [
+          {
+            "node": "Check Companies Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Companies Count": {
+      "main": [
+        [
+          {
+            "node": "Transform Company for Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform Company for Notion": {
+      "main": [
+        [
+          {
+            "node": "Create Company in Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Company in Notion": {
+      "main": [
+        [
+          {
+            "node": "Update Company Sync Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Unsynced People": {
+      "main": [
+        [
+          {
+            "node": "Check People Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check People Count": {
+      "main": [
+        [
+          {
+            "node": "Transform Person for Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform Person for Notion": {
+      "main": [
+        [
+          {
+            "node": "Create Person in Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Person in Notion": {
+      "main": [
+        [
+          {
+            "node": "Update Person Sync Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "founderstack-notion-sync-v1",
+  "meta": {
+    "templateId": "founderstack-notion-template",
+    "instanceId": "founderstack-notion-instance-001"
+  },
+  "id": "founderstack-notion-sync-workflow",
+  "tags": [
+    "crm",
+    "notion",
+    "sync"
+  ],
+  "description": "Syncs unsynced Companies and People from FounderStack CRM to Notion databases every 5 minutes"
+}

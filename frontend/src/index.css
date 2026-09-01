@@ -1,0 +1,929 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-background: #191919;
+  --color-foreground: #ffffff;
+  --color-sidebar: #202020;
+  --color-surface: #202020;
+  --color-border: #2f2f2f;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #9b9b9b;
+  --color-accent: #2383e2;
+
+  /* Shadows */
+  --color-shadow: rgba(0, 0, 0, 0.5);
+  --color-shadow-light: rgba(0, 0, 0, 0.1);
+
+  --color-primary: #ffffff;
+  --color-primary-foreground: #191919;
+  --color-secondary: #2f2f2f;
+  --color-secondary-foreground: #ffffff;
+  --color-muted: #2f2f2f;
+  --color-muted-foreground: #9b9b9b;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-input: #2f2f2f;
+  --color-ring: #2383e2;
+
+  /* Component theme colors */
+  --color-card-bg: #1a1a1a;
+  --color-card-hover: #2f2f2f;
+  --color-card-hover-light: #3f3f3f;
+  --color-card-dark: #222;
+  --color-tooltip-bg: #2f2f2f;
+  --color-blue-accent: #3b82f6;
+  --color-accent-shadow: rgba(37, 99, 235, 0.6);
+  --color-blue-shadow: rgba(59, 130, 246, 0.5);
+
+  /* DataTable specific theme colors */
+  --color-menu-bg: #1f1f1f;
+  --color-menu-section-bg: #252525;
+  --color-input-bg: #151515;
+  --color-table-bg: #191919;
+  --color-table-row-hover: #202020;
+  --color-table-row-selected: #232323;
+  --color-skeleton-bg: #2f2f2f;
+  --color-dropdown-bg: #1f1f1f;
+
+  /* ContextDrawer specific theme colors */
+  --color-drawer-bg: #191919;
+  --color-textarea-bg: #111;
+  --color-linkedin: #0077b5;
+
+  /* ImportDialog specific theme colors */
+  --color-import-bg: #191919;
+  --color-import-surface: #252525;
+  --color-import-input: #151515;
+  --color-import-card: #202020;
+  --color-import-hover: #2f2f2f;
+
+  /* Settings specific theme colors */
+  --color-settings-bg: #191919;
+  --color-settings-card: #1c1c1c;
+  --color-settings-dialog: #1a1a1a;
+  --color-settings-surface: #232323;
+  --color-settings-hover: #1f1f1f;
+  --color-settings-input: #1c1c1c;
+  --color-settings-input-alt: #222;
+  --color-settings-dark: #111;
+  --color-settings-border-alt: #2f2f2f;
+  --color-settings-switch-off: #d1d5db;
+  --color-settings-btn-hover: #2f2f2f;
+  --color-settings-nav-hover: #252525;
+  --color-settings-nav-active: #2f2f2f;
+  --color-settings-nav-active-text: #ffffff;
+  --color-settings-badge: #2f2f2f;
+  --color-settings-secondary-bg: #0f0f0f;
+  --color-settings-tertiary-bg: #1a1a1a;
+  --color-settings-quaternary-bg: #2f2f2f;
+  --color-settings-hover-alt: #333333;
+  --color-settings-hover: #2a2a2a;
+  --color-settings-text-primary: #ffffff;
+  --color-settings-text-secondary: #a1a1aa;
+  --color-settings-text-muted: #71717a;
+  --color-settings-text-accent: #3b82f6;
+  --color-settings-text-error: #ef4444;
+  --color-settings-text-success: #10b981;
+  --color-settings-border-primary: #27272a;
+  --color-settings-border-secondary: rgba(39, 39, 42, 0.5);
+  --color-settings-button-primary: #2563eb;
+  --color-settings-button-hover: #1d4ed8;
+  --color-settings-button-secondary: #404040;
+  --color-settings-button-secondary-hover: #525252;
+  --color-settings-gradient-primary-from: #3b82f6;
+  --color-settings-gradient-primary-to: #8b5cf6;
+  --color-settings-gradient-secondary-from: #10b981;
+  --color-settings-gradient-secondary-to: #06b6d4;
+  --color-settings-icon-blue: #3b82f6;
+  --color-settings-icon-purple: #a855f7;
+  --color-settings-icon-green: #10b981;
+  --color-settings-icon-red: #ef4444;
+  --color-settings-status-active: #10b981;
+  --color-settings-status-pending: #f59e0b;
+  --color-settings-api-playground: rgba(17, 17, 17, 0.9);
+  --color-settings-account-icon: #6b7280;
+
+  /* Auth components theme colors */
+  --color-auth-bg-primary: #191919;
+  --color-auth-bg-input: rgba(255, 255, 255, 0.05);
+  --color-auth-text-primary: #ffffff;
+  --color-auth-text-secondary: #a1a1aa;
+  --color-auth-text-muted: rgba(161, 161, 170, 0.9);
+  --color-auth-text-error: #ef4444;
+  --color-auth-border-primary: rgba(255, 255, 255, 0.12);
+  --color-auth-border-secondary: rgba(255, 255, 255, 0.08);
+  --color-auth-border-focus: rgba(59, 130, 246, 0.5);
+  --color-auth-border-error: #ef4444;
+  --color-auth-input-bg: rgba(255, 255, 255, 0.05);
+  --color-auth-input-border: rgba(255, 255, 255, 0.12);
+  --color-auth-input-focus: rgba(59, 130, 246, 0.5);
+  --color-auth-input-error: #ef4444;
+  --color-auth-button-primary: #ffffff;
+  --color-auth-button-primary-hover: #f3f4f6;
+  --color-auth-button-google: #2f2f2f;
+  --color-auth-button-google-hover: #3a3a3a;
+  --color-auth-error-bg: rgba(239, 68, 68, 0.1);
+  --color-auth-error-border: rgba(239, 68, 68, 0.2);
+  --color-auth-error-text: #ef4444;
+  --color-auth-logo-gradient-from: #9333ea;
+  --color-auth-logo-gradient-via: #3b82f6;
+  --color-auth-logo-gradient-to: #10b981;
+
+  /* InviteLandingPage specific theme colors */
+  --color-invite-left-bg: #111;
+  --color-invite-right-bg: #0d0d0d;
+  --color-invite-card: #1a1a1a;
+  --color-invite-logo-gradient-from: #9333ea;
+  --color-invite-logo-gradient-via: #3b82f6;
+  --color-invite-logo-gradient-to: #10b981;
+  --color-invite-text-gradient-from: #60a5fa;
+  --color-invite-text-gradient-to: #a855f7;
+  --color-invite-error: #ef4444;
+  --color-invite-blur-blue: rgba(37, 99, 235, 0.3);
+  --color-invite-blur-purple: rgba(168, 85, 247, 0.3);
+  --color-invite-inviter: #60a5fa;
+  --color-invite-check-green: #10b981;
+  --color-invite-check-blue: #3b82f6;
+  --color-invite-check-purple: #a855f7;
+
+  /* InviteMembersDialog specific theme colors */
+  --color-invite-dialog-bg: #191919;
+  --color-invite-card-bg: #202020;
+  --color-invite-hover: #252525;
+  --color-invite-border: #2f2f2f;
+
+  /* OnboardingPage specific theme colors */
+  --color-onboarding-bg-primary: #0a0a0a;
+  --color-onboarding-bg-secondary: #0f0f0f;
+  --color-onboarding-bg-input: #0f0f0f;
+  --color-onboarding-text-primary: #ffffff;
+  --color-onboarding-text-secondary: #f4f4f5;
+  --color-onboarding-text-muted: #a1a1aa;
+  --color-onboarding-text-footer: #71717a;
+  --color-onboarding-text-error: #ef4444;
+  --color-onboarding-border-primary: #27272a;
+  --color-onboarding-border-secondary: rgba(39, 39, 42, 0.5);
+  --color-onboarding-focus-ring: rgba(59, 130, 246, 0.4);
+  --color-onboarding-button-primary: #2563eb;
+  --color-onboarding-button-hover: #1d4ed8;
+  --color-onboarding-progress: #2563eb;
+  --color-onboarding-logo-gradient-from: #9333ea;
+  --color-onboarding-logo-gradient-via: #3b82f6;
+  --color-onboarding-logo-gradient-to: #10b981;
+  --color-onboarding-card-bg: #1a1a1a;
+  --color-onboarding-referral-inactive: #a1a1aa;
+  --color-onboarding-referral-active-bg: rgba(59, 130, 246, 0.1);
+  --color-onboarding-referral-active-border: #2563eb;
+
+  /* OnboardingModal specific theme colors */
+  --color-onboarding-modal-bg: #0f0f0f;
+  --color-onboarding-modal-card: #1a1a1a;
+  --color-onboarding-modal-footer: #0a0a0a;
+  --color-onboarding-modal-progress: #3b82f6;
+  --color-onboarding-modal-blue-bg: rgba(59, 130, 246, 0.1);
+  --color-onboarding-modal-blue-text: #3b82f6;
+  --color-onboarding-modal-purple-bg: rgba(168, 85, 247, 0.1);
+  --color-onboarding-modal-purple-text: #a855f7;
+  --color-onboarding-modal-orange-bg: rgba(249, 115, 22, 0.1);
+  --color-onboarding-modal-orange-text: #f97316;
+  --color-onboarding-modal-input-bg: #1a1a1a;
+  --color-onboarding-modal-input-focus: rgba(59, 130, 246, 0.3);
+  --color-onboarding-modal-button-primary: #3b82f6;
+  --color-onboarding-modal-button-hover: #2563eb;
+  --color-onboarding-modal-tag-active: rgba(59, 130, 246, 0.1);
+  --color-onboarding-modal-tag-hover: rgba(59, 130, 246, 0.3);
+  --color-onboarding-modal-tip-bg: rgba(59, 130, 246, 0.05);
+  --color-onboarding-modal-tip-border: rgba(59, 130, 246, 0.1);
+  --color-onboarding-modal-tip-text: #bfdbfe;
+
+  /* ProModal specific theme colors */
+  --color-pro-modal-bg: #0f0f0f;
+  --color-pro-modal-text-primary: #ffffff;
+  --color-pro-modal-text-secondary: #a1a1aa;
+  --color-pro-modal-icon-bg: rgba(37, 99, 235, 0.1);
+  --color-pro-modal-icon-border: rgba(59, 130, 246, 0.2);
+  --color-pro-modal-button-primary: #2563eb;
+  --color-pro-modal-button-hover: #1d4ed8;
+  --color-invite-text-primary: #ffffff;
+  --color-invite-text-secondary: #9b9b9b;
+  --color-invite-blue-bg: rgba(59, 130, 246, 0.1);
+  --color-invite-blue-text: #3b82f6;
+  --color-invite-blue-hover-text: #60a5fa;
+  --color-invite-blue-hover-bg: rgba(59, 130, 246, 0.2);
+  --color-invite-blue-shadow: rgba(59, 130, 246, 0.3);
+  --color-invite-purple-bg: rgba(168, 85, 247, 0.1);
+  --color-invite-purple-text: #a855f7;
+  --color-invite-purple-hover-text: #c084fc;
+  --color-invite-purple-hover-bg: rgba(168, 85, 247, 0.2);
+  --color-invite-purple-shadow: rgba(168, 85, 247, 0.3);
+  --color-invite-gradient-blue-from: rgba(59, 130, 246, 0.05);
+  --color-invite-gradient-purple-from: rgba(168, 85, 247, 0.05);
+  --color-invite-green-text: #10b981;
+  --color-invite-green-bg: rgba(16, 185, 129, 0.1);
+  --color-invite-green-hover: rgba(16, 185, 129, 0.2);
+  --color-invite-blue-primary: #2563eb;
+  --color-invite-blue-hover: #3b82f6;
+  --color-invite-blue-blur: #3b82f6;
+  --color-invite-team-border: rgba(59, 130, 246, 0.2);
+  --color-invite-team-text: #bfdbfe;
+  --color-invite-external-border: rgba(168, 85, 247, 0.2);
+  --color-invite-external-text: #e9d5ff;
+
+  /* RecordPage specific theme colors */
+  --color-record-bg: #191919;
+  --color-record-card: #191919;
+  --color-record-input: #151515;
+  --color-record-dark: #0d0d0d;
+  --color-record-date: #1a1a1a;
+
+  /* KanbanBoard specific theme colors */
+  --color-kanban-bg: #191919;
+  --color-kanban-card: #202020;
+  --color-kanban-selected: #252525;
+
+  /* Kanban status colors for dark mode */
+  --color-kanban-todo-bg: rgba(59, 130, 246, 0.1);
+  --color-kanban-todo-text: #3b82f6;
+  --color-kanban-inprogress-bg: rgba(168, 85, 247, 0.1);
+  --color-kanban-inprogress-text: #a855f7;
+  --color-kanban-done-bg: rgba(34, 197, 94, 0.1);
+  --color-kanban-done-text: #22c55e;
+
+  /* Home page specific theme colors */
+  --color-home-card: #1f1f1f;
+  --color-home-mockup: #1a1a1a;
+  --color-home-border-subtle: rgba(255, 255, 255, 0.03);
+  --color-home-border-hover: rgba(255, 255, 255, 0.08);
+  --color-home-border-medium: rgba(255, 255, 255, 0.05);
+  --color-home-bg-very-subtle: rgba(255, 255, 255, 0.03);
+  --color-home-bg-subtle: rgba(255, 255, 255, 0.05);
+  --color-home-bg-medium: rgba(255, 255, 255, 0.1);
+
+  /* ReportsPage specific theme colors */
+  --color-reports-bg: #191919;
+  --color-reports-card: #1f1f1f;
+  --color-reports-header: #2a2a2a;
+  --color-reports-row-hover: #252525;
+  --color-reports-row-selected: #2a2a2a;
+  --color-reports-hover: #333;
+
+  /* Home specific theme colors */
+  --color-home-card: #141414;
+  --color-home-mockup: #0d0d0d;
+  --color-home-text: rgba(255, 255, 255, 0.9);
+
+  /* SelectionBar specific theme colors */
+  --color-selection-bg: #191919;
+  --color-selection-border: #333;
+
+  /* CommandMenu specific theme colors */
+  --color-command-bg: #1a1a1a;
+  --color-command-header: #222;
+
+  /* ShortcutsDialog specific theme colors */
+  --color-shortcuts-bg: #1a1a1a;
+  --color-shortcuts-section: #111;
+  --color-shortcuts-footer: #222;
+
+  /* KanbanBoard specific theme colors */
+  --color-kanban-bg: #191919;
+  --color-kanban-card: #202020;
+  --color-kanban-selected: #252525;
+
+  /* Modal specific theme colors */
+  --color-modal-connect-telegram-bg: #1a1a1a;
+  --color-modal-connect-telegram-border: #27272a;
+  --color-modal-connect-telegram-title: #ffffff;
+  --color-modal-connect-telegram-description: #9b9b9b;
+  --color-modal-connect-telegram-link-bg: linear-gradient(
+    to bottom right,
+    #252525,
+    #1e1e1e
+  );
+  --color-modal-connect-telegram-link-border: #333333;
+  --color-modal-connect-telegram-link-hover-border: rgba(59, 130, 246, 0.5);
+  --color-modal-connect-telegram-link-hover-shadow: rgba(59, 130, 246, 0.1);
+  --color-modal-connect-telegram-link-icon-bg: rgba(59, 130, 246, 0.2);
+  --color-modal-connect-telegram-link-icon: #3b82f6;
+  --color-modal-connect-telegram-link-text: #ffffff;
+  --color-modal-connect-telegram-link-arrow: #3b82f6;
+  --color-modal-connect-telegram-input-bg: #222222;
+  --color-modal-connect-telegram-input-border: #27272a;
+  --color-modal-connect-telegram-button-primary: #2563eb;
+  --color-modal-connect-telegram-button-primary-hover: #1d4ed8;
+  --color-modal-connect-telegram-button-ghost-hover: #333333;
+
+  --color-modal-success-bg: #1a1a1a;
+  --color-modal-success-border: #27272a;
+  --color-modal-success-title: #ffffff;
+  --color-modal-success-description: #9b9b9b;
+  --color-modal-success-icon: #22c55e;
+  --color-modal-success-card-bg: #252525;
+  --color-modal-success-card-border: #27272a;
+  --color-modal-success-card-icon: #3b82f6;
+  --color-modal-success-card-text: #ffffff;
+  --color-modal-success-button-primary: #2563eb;
+  --color-modal-success-button-primary-hover: #1d4ed8;
+  --color-modal-success-button-ghost-hover: #333333;
+
+  --color-modal-error-bg: #1a1a1a;
+  --color-modal-error-border: #27272a;
+  --color-modal-error-title: #ffffff;
+  --color-modal-error-description: #9b9b9b;
+  --color-modal-error-icon: #eab308;
+  --color-modal-error-card-bg: #252525;
+  --color-modal-error-card-border: #27272a;
+  --color-modal-error-card-icon: #eab308;
+  --color-modal-error-card-text: #ffffff;
+  --color-modal-error-button-primary: #2563eb;
+  --color-modal-error-button-primary-hover: #1d4ed8;
+  --color-modal-error-button-ghost-hover: #333333;
+
+  /* Toast specific theme colors */
+  --color-toast-success-bg: rgba(34, 197, 94, 0.1);
+  --color-toast-success-border: rgba(34, 197, 94, 0.3);
+  --color-toast-success-icon-bg: rgba(34, 197, 94, 0.2);
+  --color-toast-success-icon: #22c55e;
+  --color-toast-success-text: #22c55e;
+
+  --color-toast-error-bg: rgba(239, 68, 68, 0.1);
+  --color-toast-error-border: rgba(239, 68, 68, 0.3);
+  --color-toast-error-icon-bg: rgba(239, 68, 68, 0.2);
+  --color-toast-error-icon: #ef4444;
+  --color-toast-error-text: #ef4444;
+
+  --color-toast-info-bg: rgba(59, 130, 246, 0.1);
+  --color-toast-info-border: rgba(59, 130, 246, 0.3);
+  --color-toast-info-icon-bg: rgba(59, 130, 246, 0.2);
+  --color-toast-info-icon: #3b82f6;
+  --color-toast-info-text: #3b82f6;
+
+  --color-toast-warning-bg: rgba(245, 158, 11, 0.1);
+  --color-toast-warning-border: rgba(245, 158, 11, 0.3);
+  --color-toast-warning-icon-bg: rgba(245, 158, 11, 0.2);
+  --color-toast-warning-icon: #f59e0b;
+  --color-toast-warning-text: #f59e0b;
+
+  /* Banner specific theme colors */
+  --color-banner-telegram-bg: rgba(59, 130, 246, 0.1);
+  --color-banner-telegram-border: rgba(59, 130, 246, 0.2);
+  --color-banner-telegram-icon-bg: rgba(59, 130, 246, 0.2);
+  --color-banner-telegram-icon: #3b82f6;
+  --color-banner-telegram-text: rgba(191, 219, 254, 0.9);
+  --color-banner-telegram-button: #3b82f6;
+  --color-banner-telegram-button-hover: #2563eb;
+  --color-banner-telegram-button-text: #ffffff;
+
+  --color-banner-verification-bg: rgba(249, 115, 22, 0.1);
+  --color-banner-verification-border: rgba(249, 115, 22, 0.2);
+  --color-banner-verification-icon-bg: rgba(249, 115, 22, 0.2);
+  --color-banner-verification-icon: #f97316;
+  --color-banner-verification-text: rgba(255, 237, 213, 0.9);
+  --color-banner-verification-button-idle: #f97316;
+  --color-banner-verification-button-idle-hover: #ea580c;
+  --color-banner-verification-button-sent: rgba(34, 197, 94, 0.2);
+  --color-banner-verification-button-sent-text: #22c55e;
+  --color-banner-verification-button-error: rgba(239, 68, 68, 0.2);
+  --color-banner-verification-button-error-text: #ef4444;
+  --color-banner-verification-button-disabled: #374151;
+  --color-banner-verification-button-disabled-text: #6b7280;
+
+  --color-banner-verification-success-bg: #191919;
+  --color-banner-verification-success-blur: rgba(34, 197, 94, 0.2);
+  --color-banner-verification-success-card: rgba(34, 197, 94, 0.1);
+  --color-banner-verification-success-border: rgba(34, 197, 94, 0.2);
+  --color-banner-verification-success-icon: #22c55e;
+  --color-banner-verification-success-sparkle: #eab308;
+  --color-banner-verification-success-text-primary: #ffffff;
+  --color-banner-verification-success-text-secondary: #9b9b9b;
+  --color-banner-verification-success-button: #22c55e;
+  --color-banner-verification-success-button-hover: rgba(34, 197, 94, 0.9);
+
+  --color-banner-modal-bg: #161616;
+  --color-banner-modal-border: #27272a;
+  --color-banner-modal-icon-bg: rgba(249, 115, 22, 0.1);
+  --color-banner-modal-icon-border: rgba(249, 115, 22, 0.2);
+  --color-banner-modal-icon: #f97316;
+  --color-banner-modal-title: #ffffff;
+  --color-banner-modal-description: #a1a1aa;
+  --color-banner-modal-button-primary: #ea580c;
+  --color-banner-modal-button-primary-hover: #dc2626;
+  --color-banner-modal-button-sent: #16a34a;
+  --color-banner-modal-button-sent-hover: #15803d;
+  --color-banner-modal-button-error: #dc2626;
+  --color-banner-modal-button-error-hover: #b91c1c;
+  --color-banner-modal-button-ghost: transparent;
+  --color-banner-modal-button-ghost-hover: #27272a;
+  --color-banner-modal-text-small: #52525b;
+}
+
+.light {
+  /* Foundations - Warm but distinct */
+  --color-background: #f7f7f5; /* Your sidebar color is actually a great eye-friendly base */
+  --color-foreground: #111111;
+  --color-sidebar: #efefed; /* Dropped slightly darker than background to anchor the UI */
+  --color-surface: #fbfbfa; /* Your original background becomes the "raised" surface */
+  --color-border: #dcdcdc; /* Sharper border for that "lean" definition */
+
+  /* Typography - High "Ink" contrast */
+  --color-text-primary: #111111; /* Deep charcoal, easier on eyes than pure black */
+  --color-text-secondary: #525252; /* Darker than your original #6b for better readability */
+  --color-accent: #2383e2;
+
+  /* Shadows */
+  --color-shadow: rgba(0, 0, 0, 0.1);
+  --color-shadow-light: rgba(0, 0, 0, 0.05);
+
+  /* Components */
+  --color-primary: #111111;
+  --color-primary-foreground: #fbfbfa;
+  --color-secondary: #e8e8e6; /* Stronger contrast for buttons/inputs */
+  --color-muted: #e8e8e6;
+  --color-muted-foreground: #525252;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #fbfbfa;
+  --color-input: #e8e8e6;
+  --color-ring: #2383e2;
+
+  /* Component theme colors */
+  --color-card-bg: #fbfbfa; /* The "surface" color */
+  --color-card-hover: #e5e5e3; /* Your chosen hover color works perfectly here */
+  --color-card-hover-light: #efefed;
+  --color-card-dark: #e8e8e6;
+
+  /* DataTable specific theme colors */
+  --color-menu-bg: #fbfbfa; /* Matches surface for a clean look */
+  --color-menu-section-bg: #f2f2f0; /* Darker to clearly group menu items */
+  --color-input-bg: #efefed; /* High contrast for form fields */
+  --color-table-bg: #fbfbfa; /* Clean "paper" base */
+  --color-table-row-hover: #f2f2f0; /* Noticeable but soft hover */
+  --color-table-row-selected: #e5e5e3; /* Strong "locked-in" feel for selection */
+  --color-skeleton-bg: #e1e1df; /* Faster to recognize as a loading state */
+  --color-dropdown-bg: #fbfbfa; /* Keeps menus feeling light and airy */
+
+  /* ContextDrawer specific theme colors */
+  --color-drawer-bg: #f7f7f5; /* Matches the Sidebar to create a "UI Frame" effect */
+  --color-textarea-bg: #fbfbfa;
+
+  --color-linkedin: #0077b5; /* Standard brand color */
+
+  /* to be implemnted */
+  --color-drawer-border: #dcdcdc; /* Defines the edge clearly against the table */
+  --color-drawer-header: #f2f2f0; /* Subtle background for the top of the drawer */
+
+  /* ImportDialog specific theme colors */
+  --color-import-bg: #fbfbfa;
+  --color-import-surface: #f5f5f3;
+  --color-import-input: #f5f5f3;
+  --color-import-card: #f7f7f5;
+  --color-import-hover: #efefed;
+
+  /* Settings specific theme colors */
+  --color-settings-bg: #f7f7f5;
+  --color-settings-card: #fbfbfa; /* Lightest surface for settings detail */
+  --color-settings-dialog: #fbfbfa;
+  --color-settings-surface: #f2f2f0; /* For secondary wells or sections */
+
+  /* Navigation / Tabs */
+  --color-settings-nav-hover: #efefed; /* Distinct move from background */
+  --color-settings-nav-active: #e5e5e3; /* Solid visual feedback */
+  --color-settings-nav-active-text: #111111;
+
+  /* Inputs & Interactive */
+  --color-settings-input: #ffffff; /* High contrast eye-friendly white */
+  --color-settings-input-alt: #f2f2f0;
+  --color-settings-border-primary: #dcdcdc; /* Lean, sharp borders */
+  --color-settings-border-secondary: rgba(220, 220, 220, 0.5);
+
+  /* Buttons & States */
+  --color-settings-btn-hover: #e5e5e3;
+  --color-settings-button-secondary: #d1d5db;
+  --color-settings-button-secondary-hover: #9ca3af;
+  --color-settings-hover: #efefed;
+  --color-settings-switch-off: #d1d1cf;
+
+  /* Typography */
+  --color-settings-text-primary: #111111;
+  --color-settings-text-secondary: #525252; /* Sharper legibility */
+  --color-settings-text-muted: #828282; /* Darker for "70% contrast" */
+
+  /* Hierarchy Levels */
+  --color-settings-secondary-bg: #f2f2f0;
+  --color-settings-tertiary-bg: #e5e5e3;
+  --color-settings-quaternary-bg: #dcdcdc;
+
+  /* Auth components theme colors */
+  --color-auth-bg-primary: #fbfbfa;
+  --color-auth-bg-input: rgba(0, 0, 0, 0.04);
+  --color-auth-text-primary: #191919;
+  --color-auth-text-secondary: #6b6b6b;
+  --color-auth-text-muted: rgba(107, 107, 107, 0.9);
+  --color-auth-text-error: #dc2626;
+  --color-auth-border-primary: rgba(0, 0, 0, 0.1);
+  --color-auth-border-secondary: rgba(0, 0, 0, 0.06);
+  --color-auth-border-focus: rgba(37, 99, 235, 0.5);
+  --color-auth-border-error: #dc2626;
+  --color-auth-input-bg: rgba(0, 0, 0, 0.04);
+  --color-auth-input-border: rgba(0, 0, 0, 0.1);
+  --color-auth-input-focus: rgba(37, 99, 235, 0.5);
+  --color-auth-input-error: #dc2626;
+  --color-auth-button-primary: #191919;
+  --color-auth-button-primary-hover: #0f172a;
+  --color-auth-button-google: #f5f5f3;
+  --color-auth-button-google-hover: #efefed;
+  --color-auth-error-bg: rgba(220, 38, 38, 0.08);
+  --color-auth-error-border: rgba(220, 38, 38, 0.16);
+  --color-auth-error-text: #dc2626;
+  --color-auth-logo-gradient-from: #9333ea;
+  --color-auth-logo-gradient-via: #3b82f6;
+  --color-auth-logo-gradient-to: #10b981;
+
+  /* InviteLandingPage specific theme colors */
+  --color-invite-left-bg: #f7f7f5;
+  --color-invite-right-bg: #fbfbfa;
+  --color-invite-card: #fafaf9;
+  --color-invite-logo-gradient-from: #9333ea;
+  --color-invite-logo-gradient-via: #3b82f6;
+  --color-invite-logo-gradient-to: #10b981;
+  --color-invite-text-gradient-from: #60a5fa;
+  --color-invite-text-gradient-to: #a855f7;
+  --color-invite-error: #ef4444;
+  --color-invite-blur-blue: rgba(37, 99, 235, 0.15);
+  --color-invite-blur-purple: rgba(168, 85, 247, 0.15);
+  --color-invite-inviter: #2563eb;
+  --color-invite-check-green: #059669;
+  --color-invite-check-blue: #2563eb;
+  --color-invite-check-purple: #7c3aed;
+
+  /* InviteMembersDialog specific theme colors */
+  --color-invite-dialog-bg: #f2f2f0;
+  --color-invite-card-bg: #6b6b6b;
+  --color-invite-hover: #f5f5f3;
+  --color-invite-border: #9b9b9b;
+
+  /* OnboardingPage specific theme colors */
+  --color-onboarding-bg-primary: #fbfbfa;
+  --color-onboarding-bg-secondary: #f7f7f5;
+  --color-onboarding-bg-input: #f7f7f5;
+  --color-onboarding-text-primary: #191919;
+  --color-onboarding-text-secondary: #09090b;
+  --color-onboarding-text-muted: #6b6b6b;
+  --color-onboarding-text-footer: #9b9b9b;
+  --color-onboarding-text-error: #ef4444;
+  --color-onboarding-border-primary: #e9e9e7;
+  --color-onboarding-border-secondary: rgba(228, 228, 224, 0.5);
+  --color-onboarding-focus-ring: rgba(37, 99, 235, 0.3);
+  --color-onboarding-button-primary: #1d4ed8;
+  --color-onboarding-button-hover: #1e40af;
+  --color-onboarding-progress: #1d4ed8;
+  --color-onboarding-logo-gradient-from: #9333ea;
+  --color-onboarding-logo-gradient-via: #3b82f6;
+  --color-onboarding-logo-gradient-to: #10b981;
+  --color-onboarding-card-bg: #f7f7f5;
+  --color-onboarding-referral-inactive: #6b6b6b;
+  --color-onboarding-referral-active-bg: rgba(37, 99, 235, 0.08);
+  --color-onboarding-referral-active-border: #1d4ed8;
+
+  /* OnboardingModal specific theme colors */
+  --color-onboarding-modal-bg: #fbfbfa;
+  --color-onboarding-modal-card: #f7f7f5;
+  --color-onboarding-modal-footer: #f5f5f3;
+  --color-onboarding-modal-progress: #2563eb;
+  --color-onboarding-modal-blue-bg: rgba(37, 99, 235, 0.08);
+  --color-onboarding-modal-blue-text: #2563eb;
+  --color-onboarding-modal-purple-bg: rgba(124, 58, 237, 0.08);
+  --color-onboarding-modal-purple-text: #7c3aed;
+  --color-onboarding-modal-orange-bg: rgba(234, 88, 12, 0.08);
+  --color-onboarding-modal-orange-text: #ea580c;
+  --color-onboarding-modal-input-bg: #f7f7f5;
+  --color-onboarding-modal-input-focus: rgba(37, 99, 235, 0.15);
+  --color-onboarding-modal-button-primary: #2563eb;
+  --color-onboarding-modal-button-hover: #1d4ed8;
+  --color-onboarding-modal-tag-active: rgba(37, 99, 235, 0.08);
+  --color-onboarding-modal-tag-hover: rgba(37, 99, 235, 0.15);
+  --color-onboarding-modal-tip-bg: rgba(37, 99, 235, 0.02);
+  --color-onboarding-modal-tip-border: rgba(37, 99, 235, 0.06);
+  --color-onboarding-modal-tip-text: #1e40af;
+
+  /* ProModal specific theme colors */
+  --color-pro-modal-bg: #fbfbfa;
+  --color-pro-modal-text-primary: #191919;
+  --color-pro-modal-text-secondary: #6b6b6b;
+  --color-pro-modal-icon-bg: rgba(37, 99, 235, 0.06);
+  --color-pro-modal-icon-border: rgba(37, 99, 235, 0.12);
+  --color-pro-modal-button-primary: #1d4ed8;
+  --color-pro-modal-button-hover: #1e40af;
+  --color-invite-text-primary: #191919;
+  --color-invite-text-secondary: #6b6b6b;
+  --color-invite-blue-bg: rgba(37, 99, 235, 0.08);
+  --color-invite-blue-text: #2563eb;
+  --color-invite-blue-hover-text: #3b82f6;
+  --color-invite-blue-hover-bg: rgba(37, 99, 235, 0.12);
+  --color-invite-blue-shadow: rgba(37, 99, 235, 0.2);
+  --color-invite-purple-bg: rgba(124, 58, 237, 0.08);
+  --color-invite-purple-text: #7c3aed;
+  --color-invite-purple-hover-text: #8b5cf6;
+  --color-invite-purple-hover-bg: rgba(124, 58, 237, 0.12);
+  --color-invite-purple-shadow: rgba(124, 58, 237, 0.2);
+  --color-invite-gradient-blue-from: rgba(37, 99, 235, 0.02);
+  --color-invite-gradient-purple-from: rgba(124, 58, 237, 0.02);
+  --color-invite-green-text: #059669;
+  --color-invite-green-bg: rgba(5, 150, 105, 0.08);
+  --color-invite-green-hover: rgba(5, 150, 105, 0.12);
+  --color-invite-blue-primary: #1d4ed8;
+  --color-invite-blue-hover: #2563eb;
+  --color-invite-blue-blur: #2563eb;
+  --color-invite-team-border: rgba(37, 99, 235, 0.12);
+  --color-invite-team-text: #1e40af;
+  --color-invite-external-border: rgba(124, 58, 237, 0.12);
+  --color-invite-external-text: #6d28d9;
+
+  /* RecordPage specific theme colors */
+  --color-record-bg: #fbfbfa;
+  --color-record-card: #fafaf9;
+  --color-record-input: #f5f5f3;
+  --color-record-dark: #f5f5f3;
+  --color-record-date: #f7f7f5;
+
+  /* KanbanBoard specific theme colors */
+  --color-kanban-bg: #fbfbfa;
+  --color-kanban-card: #f7f7f5;
+  --color-kanban-selected: #f5f5f3;
+
+  /* Kanban status colors for light mode */
+  --color-kanban-todo-bg: rgba(37, 99, 235, 0.08);
+  --color-kanban-todo-text: #1d4ed8;
+  --color-kanban-inprogress-bg: rgba(124, 58, 237, 0.08);
+  --color-kanban-inprogress-text: #7c3aed;
+  --color-kanban-done-bg: rgba(22, 163, 74, 0.08);
+  --color-kanban-done-text: #15803d;
+
+  /* ReportsPage specific theme colors */
+  --color-reports-bg: #fbfbfa;
+  --color-reports-card: #f7f7f5;
+  --color-reports-header: #f5f5f3;
+  --color-reports-row-hover: #f7f7f5;
+  --color-reports-row-selected: #f5f5f3;
+  --color-reports-hover: #efefed;
+
+  /* Home specific theme colors */
+  --color-home-card: #fbfbfa; /* The "Paper" surface - keeps the center bright */
+  --color-home-mockup: #f2f2f0; /* Inset look - creates depth for screenshots/demos */
+
+  /* Borders - Moving from generic RGBA to architectural tones */
+  --color-home-border-subtle: #e9e9e7; /* Very thin, soft structure */
+  --color-home-border-medium: #dcdcdc; /* Clear definition for sections */
+  --color-home-border-hover: #cacad6; /* Punchy interactive state */
+
+  /* Backgrounds - Tiers of importance */
+  --color-home-bg-very-subtle: #f7f7f5; /* Use for the overall page background */
+  --color-home-bg-subtle: #efefed; /* Use for secondary content areas */
+  --color-home-bg-medium: #e5e5e3; /* Use for highlighted sections or footers */
+
+  /* Typography */
+  --color-home-text: #111111; /* Deep ink for a premium feel */
+
+  /* SelectionBar specific theme colors */
+  --color-selection-bg: #fbfbfa;
+  --color-selection-border: #efefed;
+
+  /* CommandMenu specific theme colors */
+  --color-command-bg: #f7f7f5;
+  --color-command-header: #f5f5f3;
+
+  /* ShortcutsDialog specific theme colors */
+  --color-shortcuts-bg: #f7f7f5;
+  --color-shortcuts-section: #f5f5f3;
+  --color-shortcuts-footer: #efefed;
+
+  /* Modal specific theme colors */
+  --color-modal-connect-telegram-bg: #f7f7f5;
+  --color-modal-connect-telegram-border: #e9e9e7;
+  --color-modal-connect-telegram-title: #191919;
+  --color-modal-connect-telegram-description: #6b6b6b;
+  --color-modal-connect-telegram-link-bg: linear-gradient(
+    to bottom right,
+    #f5f5f3,
+    #f0f0ee
+  );
+  --color-modal-connect-telegram-link-border: #d6d6d3;
+  --color-modal-connect-telegram-link-hover-border: rgba(37, 99, 235, 0.3);
+  --color-modal-connect-telegram-link-hover-shadow: rgba(37, 99, 235, 0.08);
+  --color-modal-connect-telegram-link-icon-bg: rgba(37, 99, 235, 0.12);
+  --color-modal-connect-telegram-link-icon: #1d4ed8;
+  --color-modal-connect-telegram-link-text: #191919;
+  --color-modal-connect-telegram-link-arrow: #1d4ed8;
+  --color-modal-connect-telegram-input-bg: #f5f5f3;
+  --color-modal-connect-telegram-input-border: #e9e9e7;
+  --color-modal-connect-telegram-button-primary: #1d4ed8;
+  --color-modal-connect-telegram-button-primary-hover: #1e40af;
+  --color-modal-connect-telegram-button-ghost-hover: #e9e9e7;
+
+  --color-modal-success-bg: #f7f7f5;
+  --color-modal-success-border: #e9e9e7;
+  --color-modal-success-title: #191919;
+  --color-modal-success-description: #6b6b6b;
+  --color-modal-success-icon: #16a34a;
+  --color-modal-success-card-bg: #f5f5f3;
+  --color-modal-success-card-border: #e9e9e7;
+  --color-modal-success-card-icon: #1d4ed8;
+  --color-modal-success-card-text: #191919;
+  --color-modal-success-button-primary: #1d4ed8;
+  --color-modal-success-button-primary-hover: #1e40af;
+  --color-modal-success-button-ghost-hover: #e9e9e7;
+
+  --color-modal-error-bg: #f7f7f5;
+  --color-modal-error-border: #e9e9e7;
+  --color-modal-error-title: #191919;
+  --color-modal-error-description: #6b6b6b;
+  --color-modal-error-icon: #d97706;
+  --color-modal-error-card-bg: #f5f5f3;
+  --color-modal-error-card-border: #e9e9e7;
+  --color-modal-error-card-icon: #d97706;
+  --color-modal-error-card-text: #191919;
+  --color-modal-error-button-primary: #1d4ed8;
+  --color-modal-error-button-primary-hover: #1e40af;
+  --color-modal-error-button-ghost-hover: #e9e9e7;
+
+  /* Toast specific theme colors */
+  --color-toast-success-bg: rgba(22, 163, 74, 0.08);
+  --color-toast-success-border: rgba(22, 163, 74, 0.2);
+  --color-toast-success-icon-bg: rgba(22, 163, 74, 0.12);
+  --color-toast-success-icon: #16a34a;
+  --color-toast-success-text: #16a34a;
+
+  --color-toast-error-bg: rgba(220, 38, 38, 0.08);
+  --color-toast-error-border: rgba(220, 38, 38, 0.2);
+  --color-toast-error-icon-bg: rgba(220, 38, 38, 0.12);
+  --color-toast-error-icon: #dc2626;
+  --color-toast-error-text: #dc2626;
+
+  --color-toast-info-bg: rgba(37, 99, 235, 0.08);
+  --color-toast-info-border: rgba(37, 99, 235, 0.2);
+  --color-toast-info-icon-bg: rgba(37, 99, 235, 0.12);
+  --color-toast-info-icon: #1d4ed8;
+  --color-toast-info-text: #1d4ed8;
+
+  --color-toast-warning-bg: rgba(217, 119, 6, 0.08);
+  --color-toast-warning-border: rgba(217, 119, 6, 0.2);
+  --color-toast-warning-icon-bg: rgba(217, 119, 6, 0.12);
+  --color-toast-warning-icon: #d97706;
+  --color-toast-warning-text: #d97706;
+
+  /* Banner specific theme colors */
+  --color-banner-telegram-bg: rgba(37, 99, 235, 0.08);
+  --color-banner-telegram-border: rgba(37, 99, 235, 0.12);
+  --color-banner-telegram-icon-bg: rgba(37, 99, 235, 0.12);
+  --color-banner-telegram-icon: #1d4ed8;
+  --color-banner-telegram-text: rgba(30, 64, 175, 0.9);
+  --color-banner-telegram-button: #1d4ed8;
+  --color-banner-telegram-button-hover: #1e40af;
+  --color-banner-telegram-button-text: #ffffff;
+
+  --color-banner-verification-bg: rgba(234, 88, 12, 0.08);
+  --color-banner-verification-border: rgba(234, 88, 12, 0.12);
+  --color-banner-verification-icon-bg: rgba(234, 88, 12, 0.12);
+  --color-banner-verification-icon: #dc2626;
+  --color-banner-verification-text: rgba(154, 52, 18, 0.9);
+  --color-banner-verification-button-idle: #dc2626;
+  --color-banner-verification-button-idle-hover: #b91c1c;
+  --color-banner-verification-button-sent: rgba(22, 163, 74, 0.12);
+  --color-banner-verification-button-sent-text: #15803d;
+  --color-banner-verification-button-error: rgba(220, 38, 38, 0.12);
+  --color-banner-verification-button-error-text: #b91c1c;
+  --color-banner-verification-button-disabled: #e5e7eb;
+  --color-banner-verification-button-disabled-text: #9ca3af;
+
+  --color-banner-verification-success-bg: #fbfbfa;
+  --color-banner-verification-success-blur: rgba(34, 197, 94, 0.12);
+  --color-banner-verification-success-card: rgba(34, 197, 94, 0.08);
+  --color-banner-verification-success-border: rgba(34, 197, 94, 0.12);
+  --color-banner-verification-success-icon: #16a34a;
+  --color-banner-verification-success-sparkle: #d97706;
+  --color-banner-verification-success-text-primary: #191919;
+  --color-banner-verification-success-text-secondary: #6b6b6b;
+  --color-banner-verification-success-button: #16a34a;
+  --color-banner-verification-success-button-hover: rgba(22, 163, 74, 0.9);
+
+  --color-banner-modal-bg: #f7f7f5;
+  --color-banner-modal-border: #e9e9e7;
+  --color-banner-modal-icon-bg: rgba(234, 88, 12, 0.08);
+  --color-banner-modal-icon-border: rgba(234, 88, 12, 0.12);
+  --color-banner-modal-icon: #dc2626;
+  --color-banner-modal-title: #191919;
+  --color-banner-modal-description: #6b6b6b;
+  --color-banner-modal-button-primary: #dc2626;
+  --color-banner-modal-button-primary-hover: #b91c1c;
+  --color-banner-modal-button-sent: #16a34a;
+  --color-banner-modal-button-sent-hover: #15803d;
+  --color-banner-modal-button-error: #dc2626;
+  --color-banner-modal-button-error-hover: #b91c1c;
+  --color-banner-modal-button-ghost: transparent;
+  --color-banner-modal-button-ghost-hover: #e9e9e7;
+  --color-banner-modal-text-small: #9ca3af;
+}
+
+/* Kanban status color classes */
+.kanban-status-todo {
+  background-color: var(--color-kanban-todo-bg);
+  color: var(--color-kanban-todo-text);
+}
+
+.kanban-status-inprogress {
+  background-color: var(--color-kanban-inprogress-bg);
+  color: var(--color-kanban-inprogress-text);
+}
+
+.kanban-status-done {
+  background-color: var(--color-kanban-done-bg);
+  color: var(--color-kanban-done-text);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    font-family: "Inter", sans-serif;
+  }
+}
+
+/* Custom scrollbar for Notion-like feel */
+::-webkit-scrollbar {
+  width: 3px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f3f;
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: #d6d6d3;
+}
+
+/* RTL Arabic styles */
+html[dir="rtl"] body,
+html[dir="rtl"] * {
+  font-family: "Cairo", "Inter", sans-serif;
+}
+
+html[dir="rtl"] .rtl\:space-x-reverse > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+}
+
+html[dir="rtl"] .rtl\:mr-auto {
+  margin-right: auto;
+  margin-left: 0;
+}
+
+html[dir="rtl"] .rtl\:ml-auto {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+html[dir="rtl"] .rtl\:text-right {
+  text-align: right;
+}
+
+html[dir="rtl"] .rtl\:text-left {
+  text-align: left;
+}
+
+html[dir="rtl"] .rtl\:origin-right {
+  transform-origin: right;
+}
+
+html[dir="rtl"] .rtl\:origin-left {
+  transform-origin: left;
+}
+
+html[dir="rtl"] .rtl\:translate-x-1\/2 {
+  --tw-translate-x: 50%;
+}
+
+html[dir="rtl"] .rtl\:translate-x-1\/2 {
+  --tw-translate-x: -50%;
+}
+
+html[dir="rtl"] .rtl\:flex-row-reverse {
+  flex-direction: row-reverse;
+}
+
+html[dir="rtl"] .rtl\:divide-x-reverse > :not([hidden]) ~ :not([hidden]) {
+  --tw-divide-x-reverse: 1;
+}
+
+html[dir="rtl"] nav[aria-label="pagination"] svg {
+  transform: rotate(180deg);
+}
