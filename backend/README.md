@@ -476,7 +476,7 @@ ruff check --fix .
 
 ## License
 
-[Add your license here]
+GNU GENERAL PUBLIC LICENSE
 
 ---
 

@@ -281,5 +281,4 @@ Then edit each file with your own credentials. See the individual READMEs for fu
 ---
 
 ## License
-
-MIT
+GNU GENERAL PUBLIC LICENSE

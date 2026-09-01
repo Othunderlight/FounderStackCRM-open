@@ -231,7 +231,7 @@ Output goes to `dist/`.
 
 ## License
 
-MIT
+GNU GENERAL PUBLIC LICENSE
 
 ---
 
