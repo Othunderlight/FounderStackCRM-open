@@ -10,6 +10,13 @@ from .models import (
     TenantBackupConfig,
     Webhook,
     WebhookDelivery,
+    ZernioAccount,
+    ZernioConversation,
+    ZernioDailyMetric,
+    ZernioMessage,
+    ZernioPost,
+    ZernioProfile,
+    ZernioWebhookEvent,
 )
 
 
@@ -125,6 +132,121 @@ class CredentialAdmin(admin.ModelAdmin):
     list_display = ("user",)
     search_fields = ("user__username",)
     inlines = [KeyInline]
+
+
+class ZernioMessageInline(admin.TabularInline):
+    model = ZernioMessage
+    extra = 0
+    fields = ("message_id", "direction", "text", "status", "sent_at")
+    readonly_fields = ("message_id", "direction", "text", "status", "sent_at")
+    can_delete = False
+    show_change_link = True
+
+
+@admin.register(ZernioProfile)
+class ZernioProfileAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "organization",
+        "profile_id",
+        "status",
+        "last_synced_at",
+    )
+    list_filter = ("status", "is_default")
+    search_fields = ("name", "profile_id", "external_id", "organization__name")
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(ZernioAccount)
+class ZernioAccountAdmin(admin.ModelAdmin):
+    list_display = (
+        "username",
+        "platform",
+        "organization",
+        "status",
+        "is_active",
+        "needs_reconnect",
+        "last_synced_at",
+    )
+    list_filter = ("platform", "status", "is_active", "needs_reconnect")
+    search_fields = ("username", "account_id", "display_name")
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(ZernioConversation)
+class ZernioConversationAdmin(admin.ModelAdmin):
+    list_display = (
+        "participant_name",
+        "platform",
+        "organization",
+        "status",
+        "unread_count",
+        "last_message_at",
+    )
+    list_filter = ("platform", "status")
+    search_fields = (
+        "participant_name",
+        "participant_username",
+        "conversation_id",
+        "last_message_text",
+    )
+    inlines = [ZernioMessageInline]
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(ZernioMessage)
+class ZernioMessageAdmin(admin.ModelAdmin):
+    list_display = (
+        "message_id",
+        "conversation",
+        "direction",
+        "status",
+        "sent_at",
+    )
+    list_filter = ("direction", "status")
+    search_fields = ("message_id", "text")
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(ZernioPost)
+class ZernioPostAdmin(admin.ModelAdmin):
+    list_display = ("post_id", "organization", "status", "published_at")
+    list_filter = ("status",)
+    search_fields = ("post_id", "content")
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(ZernioDailyMetric)
+class ZernioDailyMetricAdmin(admin.ModelAdmin):
+    list_display = ("profile", "date", "organization")
+    list_filter = ("date",)
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(ZernioWebhookEvent)
+class ZernioWebhookEventAdmin(admin.ModelAdmin):
+    list_display = (
+        "event",
+        "event_id",
+        "organization",
+        "status",
+        "created_at",
+    )
+    list_filter = ("event", "status")
+    search_fields = ("event_id", "account_id")
+    readonly_fields = (
+        "event_id",
+        "event",
+        "organization",
+        "profile",
+        "account_id",
+        "payload",
+        "status",
+        "error",
+        "processed_at",
+        "created_at",
+        "updated_at",
+    )
 
 
 @admin.register(TenantBackupConfig)

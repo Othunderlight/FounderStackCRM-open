@@ -10,6 +10,54 @@ logger = logging.getLogger(__name__)
 
 
 @inngest_client.create_function(
+    fn_id="zernio_sync_all",
+    trigger=inngest.TriggerCron(cron="15 * * * *"),  # Hourly at :15 UTC
+)
+def zernio_sync_all(ctx: inngest.Context):
+    """Refresh Zernio accounts, inbox and analytics for every organization."""
+    from integrations.models import ZernioProfile
+    from integrations.zernio.client import ZernioAPIError
+    from integrations.zernio.services import (
+        sync_account_health,
+        sync_accounts,
+        sync_analytics,
+        sync_conversations,
+    )
+
+    results = []
+    profiles = ZernioProfile.objects.select_related("organization").exclude(
+        profile_id__isnull=True
+    )
+
+    for profile in profiles:
+        result = {"profile_id": str(profile.id), "organization": profile.name}
+        try:
+            result["accounts"] = len(sync_accounts(profile))
+            sync_account_health(profile)
+        except ZernioAPIError as exc:
+            result["accounts_error"] = exc.message
+
+        try:
+            result["conversations"] = len(sync_conversations(profile, limit=50))
+        except ZernioAPIError as exc:
+            result["inbox_error"] = exc.message
+
+        try:
+            sync_analytics(profile, days=30)
+            result["analytics"] = "synced"
+        except ZernioAPIError as exc:
+            result["analytics_error"] = exc.message
+
+        results.append(result)
+
+    return {
+        "status": "completed",
+        "processed_profiles": len(results),
+        "results": results,
+    }
+
+
+@inngest_client.create_function(
     fn_id="daily_github_backup",
     trigger=inngest.TriggerCron(cron="0 0 * * *"),  # Daily at midnight UTC
 )

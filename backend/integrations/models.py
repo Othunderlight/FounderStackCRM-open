@@ -57,6 +57,8 @@ class APIKey(TenantModel):
         ("integration-sessions:write", "Write Integration Sessions"),
         ("userpreferences:read", "Read User Preferences"),
         ("userpreferences:write", "Write User Preferences"),
+        ("integrations:read", "Read Integrations"),
+        ("integrations:write", "Write Integrations"),
     ]
 
     name = models.CharField(max_length=255)
@@ -214,6 +216,276 @@ class IntegrationSession(TenantModel):
 
     def __str__(self):
         return f"IntegrationSession for {self.user.email} - {self.key}"
+
+
+class ZernioProfile(TenantModel):
+    """A Zernio profile, one per CRM organization (the "customer" in Zernio)."""
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        PENDING = "pending", "Pending"
+        DISCONNECTED = "disconnected", "Disconnected"
+
+    organization = models.OneToOneField(
+        "users.Organization",
+        on_delete=models.CASCADE,
+        related_name="zernio_profile",
+    )
+    profile_id = models.CharField(
+        max_length=128,
+        blank=True,
+        null=True,
+        db_index=True,
+        help_text="Zernio profile _id. Created lazily on first connect.",
+    )
+    name = models.CharField(max_length=255)
+    external_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        db_index=True,
+        help_text="Our stable customer id, sent to Zernio as externalId.",
+    )
+    is_default = models.BooleanField(default=False)
+    status = models.CharField(
+        max_length=30, choices=Status.choices, default=Status.PENDING
+    )
+    metadata = models.JSONField(default=dict, blank=True)
+    analytics_data = models.JSONField(
+        default=dict, blank=True, help_text="Last dashboard payload fetched from Zernio."
+    )
+    analytics_cursor = models.CharField(max_length=255, blank=True, null=True)
+    last_analytics_sync_at = models.DateTimeField(null=True, blank=True)
+    last_inbox_sync_at = models.DateTimeField(null=True, blank=True)
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Zernio Profile"
+        verbose_name_plural = "Zernio Profiles"
+        ordering = ["name"]
+
+    def __str__(self):
+        state = self.profile_id or "not provisioned"
+        return f"{self.name} ({state})"
+
+
+class ZernioAccount(TenantModel):
+    """A social/messaging account connected to a Zernio profile."""
+
+    class Status(models.TextChoices):
+        CONNECTED = "connected", "Connected"
+        HEALTHY = "healthy", "Healthy"
+        WARNING = "warning", "Warning"
+        ERROR = "error", "Error"
+        DISCONNECTED = "disconnected", "Disconnected"
+
+    profile = models.ForeignKey(
+        ZernioProfile, on_delete=models.CASCADE, related_name="accounts"
+    )
+    account_id = models.CharField(max_length=128, unique=True, db_index=True)
+    platform = models.CharField(max_length=50, db_index=True)
+    username = models.CharField(max_length=255, blank=True, null=True)
+    display_name = models.CharField(max_length=255, blank=True, null=True)
+    avatar_url = models.URLField(max_length=500, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    status = models.CharField(
+        max_length=30, choices=Status.choices, default=Status.CONNECTED
+    )
+    can_post = models.BooleanField(default=True)
+    token_valid = models.BooleanField(default=True)
+    needs_reconnect = models.BooleanField(default=False)
+    issues = models.JSONField(default=list, blank=True)
+    health = models.JSONField(default=dict, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    connected_at = models.DateTimeField(null=True, blank=True)
+    disconnected_at = models.DateTimeField(null=True, blank=True)
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Zernio Account"
+        verbose_name_plural = "Zernio Accounts"
+        ordering = ["platform", "username"]
+
+    def __str__(self):
+        return f"{self.platform}:{self.username or self.account_id}"
+
+
+class ZernioConversation(TenantModel):
+    """An inbox conversation aggregated from one of the customer's accounts."""
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        ARCHIVED = "archived", "Archived"
+        CLOSED = "closed", "Closed"
+
+    profile = models.ForeignKey(
+        ZernioProfile, on_delete=models.CASCADE, related_name="conversations"
+    )
+    account = models.ForeignKey(
+        ZernioAccount,
+        on_delete=models.SET_NULL,
+        related_name="conversations",
+        null=True,
+        blank=True,
+    )
+    conversation_id = models.CharField(max_length=128, unique=True, db_index=True)
+    platform = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+    participant_id = models.CharField(max_length=255, blank=True, null=True)
+    participant_name = models.CharField(max_length=255, blank=True, null=True)
+    participant_username = models.CharField(max_length=255, blank=True, null=True)
+    participant_avatar = models.URLField(max_length=500, blank=True, null=True)
+    status = models.CharField(
+        max_length=30, choices=Status.choices, default=Status.ACTIVE
+    )
+    last_message_text = models.TextField(blank=True, null=True)
+    last_message_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    unread_count = models.PositiveIntegerField(default=0)
+    metadata = models.JSONField(default=dict, blank=True)
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Zernio Conversation"
+        verbose_name_plural = "Zernio Conversations"
+        ordering = ["-last_message_at", "-updated_at"]
+
+    def __str__(self):
+        return f"{self.participant_name or self.conversation_id} ({self.platform})"
+
+
+class ZernioMessage(TenantModel):
+    """A message inside a Zernio conversation."""
+
+    class Direction(models.TextChoices):
+        INCOMING = "incoming", "Incoming"
+        OUTGOING = "outgoing", "Outgoing"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        SENT = "sent", "Sent"
+        DELIVERED = "delivered", "Delivered"
+        READ = "read", "Read"
+        FAILED = "failed", "Failed"
+
+    conversation = models.ForeignKey(
+        ZernioConversation, on_delete=models.CASCADE, related_name="messages"
+    )
+    message_id = models.CharField(
+        max_length=255, unique=True, null=True, blank=True, db_index=True
+    )
+    direction = models.CharField(
+        max_length=20, choices=Direction.choices, default=Direction.INCOMING
+    )
+    text = models.TextField(blank=True, null=True)
+    sender = models.JSONField(default=dict, blank=True)
+    attachments = models.JSONField(default=list, blank=True)
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.SENT
+    )
+    error_message = models.TextField(blank=True, null=True)
+    idempotency_key = models.CharField(max_length=255, blank=True, null=True)
+    sent_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        verbose_name = "Zernio Message"
+        verbose_name_plural = "Zernio Messages"
+        ordering = ["sent_at", "created_at"]
+
+    def __str__(self):
+        return f"{self.direction} message in {self.conversation_id}"
+
+
+class ZernioPost(TenantModel):
+    """A post published through Zernio, including its latest analytics."""
+
+    profile = models.ForeignKey(
+        ZernioProfile, on_delete=models.CASCADE, related_name="posts"
+    )
+    post_id = models.CharField(max_length=128, unique=True, db_index=True)
+    content = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+    platforms = models.JSONField(default=list, blank=True)
+    platform_post_urls = models.JSONField(default=list, blank=True)
+    analytics = models.JSONField(default=dict, blank=True)
+    published_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    scheduled_for = models.DateTimeField(null=True, blank=True)
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        verbose_name = "Zernio Post"
+        verbose_name_plural = "Zernio Posts"
+        ordering = ["-published_at", "-created_at"]
+
+    def __str__(self):
+        return f"{self.post_id} ({self.status or 'unknown'})"
+
+
+class ZernioDailyMetric(TenantModel):
+    """One day of aggregated metrics for a profile."""
+
+    profile = models.ForeignKey(
+        ZernioProfile, on_delete=models.CASCADE, related_name="daily_metrics"
+    )
+    date = models.DateField(db_index=True)
+    metrics = models.JSONField(default=dict, blank=True)
+    platform_breakdown = models.JSONField(default=list, blank=True)
+    raw = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        verbose_name = "Zernio Daily Metric"
+        verbose_name_plural = "Zernio Daily Metrics"
+        ordering = ["-date"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["profile", "date"], name="unique_zernio_metric_per_profile_day"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.profile_id} {self.date}"
+
+
+class ZernioWebhookEvent(TenantModel):
+    """Inbound webhook audit log and idempotency record."""
+
+    class Status(models.TextChoices):
+        RECEIVED = "received", "Received"
+        PROCESSED = "processed", "Processed"
+        IGNORED = "ignored", "Ignored"
+        FAILED = "failed", "Failed"
+
+    event_id = models.CharField(max_length=255, unique=True, db_index=True)
+    event = models.CharField(max_length=100, blank=True, null=True, db_index=True)
+    organization = models.ForeignKey(
+        "users.Organization",
+        on_delete=models.SET_NULL,
+        related_name="zernio_webhook_events",
+        null=True,
+        blank=True,
+    )
+    profile = models.ForeignKey(
+        ZernioProfile,
+        on_delete=models.SET_NULL,
+        related_name="webhook_events",
+        null=True,
+        blank=True,
+    )
+    account_id = models.CharField(max_length=128, blank=True, null=True)
+    payload = models.JSONField(default=dict, blank=True)
+    status = models.CharField(
+        max_length=30, choices=Status.choices, default=Status.RECEIVED
+    )
+    error = models.TextField(blank=True, null=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Zernio Webhook Event"
+        verbose_name_plural = "Zernio Webhook Events"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.event or 'event'} ({self.status})"
 
 
 class TenantBackupConfig(TenantModel):

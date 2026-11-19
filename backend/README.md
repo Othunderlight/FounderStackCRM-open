@@ -235,6 +235,32 @@ Cookie-based via `dj-rest-auth` with custom tokens (`cccrm-access-token`, `cccrm
 | `/api/integrations/webhooks/` | CRUD + ping | Webhook subscriptions |
 | `/api/integrations/credentials/` | CRUD | Credential storage |
 | `/api/integrations/tenant-backup-config/` | CRUD | GitHub backup config |
+| `/api/integrations/zernio/profiles/` | CRUD + ensure/sync | One Zernio profile per organization |
+| `/api/integrations/zernio/accounts/` | List/detail/delete + sync/health | Connected social/messaging accounts |
+| `/api/integrations/zernio/conversations/` | List/detail + sync/messages/read | Inbox and DM threads |
+| `/api/integrations/zernio/posts/` | List/detail + publish/sync | Publishing and post analytics |
+| `/api/integrations/zernio/analytics/` | Dashboard/daily/followers/delta | Per-customer analytics |
+| `/api/integrations/zernio/oauth-apps/` | CRUD + test | White-label platform apps |
+| `/api/integrations/zernio/webhook/` | POST | Signed Zernio webhook receiver |
+
+### Zernio integration
+
+Each organization gets one Zernio profile whose `externalId` is the organization
+UUID, so every webhook can be routed back without a lookup. The first call to
+`POST /api/integrations/zernio/profiles/ensure/` provisions the profile.
+
+Webhook endpoint: `POST /api/integrations/zernio/webhook/`
+
+```bash
+# Register this URL in Zernio and copy the signing secret into .env
+curl -X POST "https://your-domain/api/integrations/zernio/webhook/" \
+  -H "X-Zernio-Signature: <hex-hmac-sha256-of-raw-body>"
+```
+
+Set `ZERNIO_API_KEY`, `ZERNIO_API_BASE_URL`, and `ZERNIO_WEBHOOK_SECRET` in
+`.env`. Events are deduplicated on the Zernio event id and written to the local
+inbox mirror. An Inngest cron (`zernio_sync_all`, hourly) refreshes accounts,
+conversations, and analytics.
 
 ### Dashboard
 
@@ -360,6 +386,11 @@ INNGEST_EVENT_KEY=<your-event-key>
 
 # Notion (optional)
 # UNIPILE_API_KEY=<your-unipile-key>
+
+# Zernio (social/messaging integration)
+ZERNIO_API_KEY=<your-zernio-api-key>
+ZERNIO_API_BASE_URL=https://zernio.com/api/v1
+ZERNIO_WEBHOOK_SECRET=<signing-secret-from-the-zernio-endpoint>
 
 # Email
 EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend

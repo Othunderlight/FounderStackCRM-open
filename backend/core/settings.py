@@ -11,7 +11,8 @@ env = Env()
 
 # Explicitly load .env **only in development**
 if os.environ.get("DJANGO_DEBUG", "False") == "True":
-    env.read_env(os.path.join(BASE_DIR, ".env"))
+    # overwrite=True so edits to .env win over stale exported shell variables
+    env.read_env(os.path.join(BASE_DIR, ".env"), overwrite=True)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -124,6 +125,7 @@ OPEN_URLS = [
     r"^/admin/.*$",
     r"^/oauth/password/reset/.*$",
     r"^/api/invitations/info/.*$",
+    r"^/api/integrations/zernio/webhook/?$",
 ]
 
 # VIEW_ONLY_EXEMPT_URLS = [
@@ -351,6 +353,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 SITE_URL = env("SITE_URL")
 FASTAPI_URL = env("FASTAPI_URL")
+
+# Zernio messaging/social integration
+ZERNIO_API_KEY = env("ZERNIO_API_KEY", default="")
+ZERNIO_API_BASE_URL = env("ZERNIO_API_BASE_URL", default="https://zernio.com/api/v1")
+ZERNIO_WEBHOOK_SECRET = env("ZERNIO_WEBHOOK_SECRET", default="")
 
 # Security settings - different for development vs production
 if DEBUG:
