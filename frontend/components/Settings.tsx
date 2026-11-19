@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import MobileSettings from "./mobile/MobileSettings";
 import {
   User,
@@ -56,6 +56,22 @@ import {
   Ban,
   KeyRound,
   Bot,
+  AtSign,
+  Facebook,
+  Gamepad2,
+  Ghost,
+  Instagram,
+  Loader2,
+  Music2,
+  Pin,
+  Slack,
+  Unplug,
+  Wifi,
+  WifiOff,
+  Youtube,
+  Twitter,
+  Cloud,
+  type LucideIcon,
 } from "lucide-react";
 import {
   googleLogin,
@@ -83,6 +99,17 @@ import { useTranslation } from "../src/i18n";
 import { cn } from "../lib/utils";
 import { settingsTheme } from "../lib/theme";
 import { ConnectTelegramModal } from "./ConnectTelegramModal";
+import {
+  ZernioError,
+  ensureZernioProfile,
+  getZernioProfile,
+  listZernioAccounts,
+  syncZernioAccounts,
+  getZernioConnectUrl,
+  reconnectZernioAccount,
+  disconnectZernioAccount,
+} from "../lib/zernio";
+import type { ZernioAccount, ZernioProfile } from "../lib/zernio";
 
 type RoleSummary = {
   id: string;
@@ -265,6 +292,7 @@ const SettingsLayout = () => {
   const [isAccountsExpanded, setIsAccountsExpanded] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [myAccess, setMyAccess] = useState<MyPermissionsPayload | null>(null);
+  const [isAccessLoaded, setIsAccessLoaded] = useState(false);
 
   // Map URL hash fragments to tab names
   const tabMapping: { [key: string]: string } = {
@@ -309,6 +337,8 @@ const SettingsLayout = () => {
         }
       } catch (err) {
         console.error("Failed to fetch permissions:", err);
+      } finally {
+        setIsAccessLoaded(true);
       }
     };
     fetchAccess();
@@ -360,7 +390,13 @@ const SettingsLayout = () => {
         return <ExperienceView />;
       */
       case "Accounts":
-        return <AccountsView setActiveTab={setActiveTabWrapper} />;
+        return (
+          <AccountsView
+            setActiveTab={setActiveTabWrapper}
+            canManageConfig={canManageConfig}
+            accessReady={isAccessLoaded}
+          />
+        );
       case "Emails":
         return <EmailsView />;
       case "Calendars":
@@ -1353,15 +1389,923 @@ const ExperienceView = () => {
   );
 };
 
+const ZERNIO_PENDING_KEY = "zernio:connect:pending";
+
+const ZERNIO_PLATFORMS: {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  color: string;
+  bg: string;
+}[] = [
+  {
+    id: "instagram",
+    label: "Instagram",
+    icon: Instagram,
+    color: "text-pink-500",
+    bg: "bg-pink-500/10",
+  },
+  {
+    id: "facebook",
+    label: "Facebook",
+    icon: Facebook,
+    color: "text-blue-500",
+    bg: "bg-blue-500/10",
+  },
+  {
+    id: "linkedin",
+    label: "LinkedIn",
+    icon: Linkedin,
+    color: "text-sky-400",
+    bg: "bg-sky-500/10",
+  },
+  {
+    id: "x",
+    label: "X",
+    icon: Twitter,
+    color: "text-textPrimary",
+    bg: "bg-zinc-500/10",
+  },
+  {
+    id: "tiktok",
+    label: "TikTok",
+    icon: Music2,
+    color: "text-cyan-500",
+    bg: "bg-cyan-500/10",
+  },
+  {
+    id: "youtube",
+    label: "YouTube",
+    icon: Youtube,
+    color: "text-red-500",
+    bg: "bg-red-500/10",
+  },
+  {
+    id: "threads",
+    label: "Threads",
+    icon: AtSign,
+    color: "text-textPrimary",
+    bg: "bg-zinc-500/10",
+  },
+  {
+    id: "pinterest",
+    label: "Pinterest",
+    icon: Pin,
+    color: "text-rose-500",
+    bg: "bg-rose-500/10",
+  },
+  {
+    id: "reddit",
+    label: "Reddit",
+    icon: MessageCircle,
+    color: "text-orange-500",
+    bg: "bg-orange-500/10",
+  },
+  {
+    id: "discord",
+    label: "Discord",
+    icon: Gamepad2,
+    color: "text-indigo-500",
+    bg: "bg-indigo-500/10",
+  },
+  {
+    id: "bluesky",
+    label: "Bluesky",
+    icon: Cloud,
+    color: "text-sky-500",
+    bg: "bg-sky-500/10",
+  },
+  {
+    id: "slack",
+    label: "Slack",
+    icon: Slack,
+    color: "text-fuchsia-500",
+    bg: "bg-fuchsia-500/10",
+  },
+  {
+    id: "googlebusiness",
+    label: "Google Business",
+    icon: Building2,
+    color: "text-amber-500",
+    bg: "bg-amber-500/10",
+  },
+  {
+    id: "snapchat",
+    label: "Snapchat",
+    icon: Ghost,
+    color: "text-yellow-500",
+    bg: "bg-yellow-500/10",
+  },
+];
+
+const getZernioPlatform = (slug: string) =>
+  ZERNIO_PLATFORMS.find((platform) => platform.id === slug);
+
+const zernioErrorMessage = (error: unknown) => {
+  if (error instanceof ZernioError) return error.message;
+  if (error instanceof Error) return error.message;
+  return "Something went wrong. Please try again.";
+};
+
+const formatRelativeTime = (value?: string | null) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const formatter = new Intl.RelativeTimeFormat(undefined, {
+    numeric: "auto",
+  });
+  const minutes = Math.round((date.getTime() - Date.now()) / 60000);
+
+  if (Math.abs(minutes) < 60) return formatter.format(minutes, "minute");
+  const hours = Math.round(minutes / 60);
+  if (Math.abs(hours) < 24) return formatter.format(hours, "hour");
+  const days = Math.round(hours / 24);
+  if (Math.abs(days) < 30) return formatter.format(days, "day");
+  return date.toLocaleDateString();
+};
+
+const getZernioStatus = (account: ZernioAccount) => {
+  if (account.needs_reconnect) {
+    return {
+      label: "Reconnect needed",
+      dot: "bg-amber-500",
+      text: "text-amber-500",
+    };
+  }
+
+  switch (account.status) {
+    case "healthy":
+      return {
+        label: "Healthy",
+        dot: "bg-emerald-500",
+        text: "text-emerald-500",
+      };
+    case "warning":
+      return {
+        label: "Warning",
+        dot: "bg-amber-500",
+        text: "text-amber-500",
+      };
+    case "error":
+      return {
+        label: "Error",
+        dot: "bg-red-500",
+        text: "text-red-500",
+      };
+    case "disconnected":
+      return {
+        label: "Disconnected",
+        dot: "bg-zinc-500",
+        text: "text-textSecondary",
+      };
+    default:
+      return {
+        label: "Connected",
+        dot: "bg-emerald-500",
+        text: "text-emerald-500",
+      };
+  }
+};
+
+const ZernioAccountAvatar = ({ account }: { account: ZernioAccount }) => {
+  const platform = getZernioPlatform(account.platform);
+  const Icon = platform?.icon || Globe;
+
+  return (
+    <div
+      className={cn(
+        "relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-border",
+        platform?.bg || settingsTheme.quaternaryBg,
+      )}
+    >
+      <Icon size={16} className={platform?.color || "text-textSecondary"} />
+      {account.avatar_url && (
+        <img
+          src={account.avatar_url}
+          alt=""
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+const ZernioAccountsSection = ({
+  canManageConfig,
+  accessReady,
+}: {
+  canManageConfig?: boolean;
+  accessReady?: boolean;
+}) => {
+  const [profile, setProfile] = useState<ZernioProfile | null>(null);
+  const [accounts, setAccounts] = useState<ZernioAccount[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isConnectOpen, setIsConnectOpen] = useState(false);
+  const [connectingPlatform, setConnectingPlatform] = useState<string | null>(
+    null,
+  );
+  const [reconnectingId, setReconnectingId] = useState<number | null>(null);
+  const [disconnectTarget, setDisconnectTarget] =
+    useState<ZernioAccount | null>(null);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
+
+  const redirectUrl = `${window.location.origin}/?zernio=connected#/settings#accounts`;
+
+  const refresh = useCallback(async () => {
+    if (!canManageConfig) return false;
+
+    try {
+      const [nextProfile, nextAccounts] = await Promise.all([
+        getZernioProfile(),
+        listZernioAccounts(),
+      ]);
+      setProfile(nextProfile);
+      setAccounts(nextAccounts);
+      setError(null);
+      return true;
+    } catch (err) {
+      setError(zernioErrorMessage(err));
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [canManageConfig]);
+
+  useEffect(() => {
+    if (!accessReady) return;
+    if (!canManageConfig) {
+      setIsLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    const load = async () => {
+      const pendingRaw = sessionStorage.getItem(ZERNIO_PENDING_KEY);
+      const cameFromZernio = new URLSearchParams(
+        window.location.search,
+      ).has("zernio");
+      let pending: {
+        platform?: string;
+        accountId?: number;
+        accountIds?: number[];
+      } | null = null;
+      let syncedAccounts: ZernioAccount[] | null = null;
+
+      if (cameFromZernio) {
+        const nextUrl = new URL(window.location.href);
+        nextUrl.searchParams.delete("zernio");
+        window.history.replaceState({}, "", nextUrl.toString());
+      }
+
+      if (pendingRaw || cameFromZernio) {
+        const hadPending = Boolean(pendingRaw);
+        sessionStorage.removeItem(ZERNIO_PENDING_KEY);
+
+        if (pendingRaw) {
+          try {
+            pending = JSON.parse(pendingRaw);
+          } catch {
+            pending = null;
+          }
+        }
+
+        setIsSyncing(true);
+        try {
+          await syncZernioAccounts();
+          syncedAccounts = await listZernioAccounts();
+
+          if (hadPending) {
+            const reconnected = pending?.accountId
+              ? syncedAccounts.some(
+                  (account) =>
+                    account.id === pending?.accountId &&
+                    !account.needs_reconnect,
+                )
+              : false;
+            const connected = pending?.accountId
+              ? reconnected
+              : syncedAccounts.some(
+                  (account) =>
+                    !(pending?.accountIds || []).includes(account.id),
+                );
+
+            if (connected) {
+              toast.success(
+                pending?.accountId
+                  ? "Account reconnected"
+                  : "Social account connected",
+              );
+            } else {
+              toast.info("No new account was connected");
+            }
+          }
+        } catch (err) {
+          toast.error(zernioErrorMessage(err));
+        } finally {
+          if (isMounted) setIsSyncing(false);
+        }
+      }
+
+      try {
+        const [nextProfile, nextAccounts] = await Promise.all([
+          getZernioProfile(),
+          syncedAccounts ? Promise.resolve(syncedAccounts) : listZernioAccounts(),
+        ]);
+        if (!isMounted) return;
+        setProfile(nextProfile);
+        setAccounts(nextAccounts);
+      } catch (err) {
+        if (isMounted) setError(zernioErrorMessage(err));
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    load();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [accessReady, canManageConfig]);
+
+  const visibleAccounts = useMemo(
+    () =>
+      accounts.filter(
+        (account) => account.is_active || account.needs_reconnect,
+      ),
+    [accounts],
+  );
+
+  const reconnectCount = useMemo(
+    () => visibleAccounts.filter((account) => account.needs_reconnect).length,
+    [visibleAccounts],
+  );
+
+  const lastSyncedAt = useMemo(() => {
+    const timestamps = visibleAccounts
+      .map((account) => account.last_synced_at)
+      .filter((value): value is string => Boolean(value))
+      .sort();
+    return timestamps[timestamps.length - 1] || profile?.last_synced_at || null;
+  }, [profile, visibleAccounts]);
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      await syncZernioAccounts();
+      const refreshed = await refresh();
+      if (refreshed) {
+        toast.success("Social accounts are up to date");
+      }
+    } catch (err) {
+      toast.error(zernioErrorMessage(err));
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleConnect = async (platform: string) => {
+    setConnectingPlatform(platform);
+    try {
+      await ensureZernioProfile();
+      const { authUrl } = await getZernioConnectUrl(platform, redirectUrl);
+      sessionStorage.setItem(
+        ZERNIO_PENDING_KEY,
+        JSON.stringify({
+          platform,
+          startedAt: Date.now(),
+          accountIds: accounts.map((account) => account.id),
+        }),
+      );
+      window.location.href = authUrl;
+    } catch (err) {
+      toast.error(zernioErrorMessage(err));
+      setConnectingPlatform(null);
+    }
+  };
+
+  const handleReconnect = async (account: ZernioAccount) => {
+    setReconnectingId(account.id);
+    try {
+      const { authUrl } = await reconnectZernioAccount(
+        account.id,
+        redirectUrl,
+      );
+      sessionStorage.setItem(
+        ZERNIO_PENDING_KEY,
+        JSON.stringify({
+          platform: account.platform,
+          accountId: account.id,
+          startedAt: Date.now(),
+        }),
+      );
+      window.location.href = authUrl;
+    } catch (err) {
+      toast.error(zernioErrorMessage(err));
+      setReconnectingId(null);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!disconnectTarget) return;
+
+    setIsDisconnecting(true);
+    try {
+      await disconnectZernioAccount(disconnectTarget.id);
+      setAccounts((current) =>
+        current.filter((account) => account.id !== disconnectTarget.id),
+      );
+      toast.success("Social account disconnected");
+      setDisconnectTarget(null);
+    } catch (err) {
+      toast.error(zernioErrorMessage(err));
+    } finally {
+      setIsDisconnecting(false);
+    }
+  };
+
+  if (!accessReady) {
+    return (
+      <div className="space-y-4">
+        <div className="h-4 w-40 animate-pulse rounded bg-settings-hover" />
+        <div className="h-20 animate-pulse rounded-xl border border-border bg-settings-card" />
+      </div>
+    );
+  }
+
+  if (!canManageConfig) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold text-textPrimary">
+            Social accounts
+          </h3>
+          <p className="mt-1 text-xs text-textSecondary">
+            Connect social accounts to sync the inbox, publishing, and social
+            analytics.
+          </p>
+        </div>
+        <div
+          className={cn(
+            "flex items-center gap-3 rounded-xl border border-border p-5",
+            settingsTheme.card,
+          )}
+        >
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-settings-quaternary-bg">
+            <Lock size={16} className="text-textSecondary" />
+          </div>
+          <div>
+            <div className="text-sm font-medium text-textPrimary">
+              Admin access required
+            </div>
+            <p className="mt-0.5 text-xs text-textSecondary">
+              Ask a workspace admin with the config.manage permission to connect
+              social accounts.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-textPrimary">
+              Social accounts
+            </h3>
+            <Badge className="h-5 border-none bg-blue-500/15 px-2 text-[10px] font-semibold uppercase tracking-wider text-blue-400">
+              Zernio
+            </Badge>
+          </div>
+          <p className="mt-1 max-w-xl text-xs text-textSecondary">
+            Connect Instagram, LinkedIn, X, and more. Messages, publishing, and
+            analytics stay in sync through Zernio.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-2 text-xs"
+            onClick={handleSync}
+            disabled={isSyncing}
+          >
+            <RefreshCw
+              size={13}
+              className={cn(isSyncing && "animate-spin")}
+            />
+            {isSyncing ? "Syncing" : "Sync"}
+          </Button>
+          <Button
+            size="sm"
+            className="h-8 gap-2 text-xs"
+            onClick={() => setIsConnectOpen(true)}
+          >
+            <Plus size={13} />
+            Connect account
+          </Button>
+        </div>
+      </div>
+
+      <div
+        className={cn(
+          "flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border px-4 py-3.5",
+          settingsTheme.card,
+        )}
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-blue-500/20 bg-gradient-to-br from-blue-500/20 to-purple-500/20">
+            <Share2 size={16} className="text-blue-400" />
+          </div>
+          <div>
+            <div className="text-sm font-medium text-textPrimary">
+              {profile?.name || "Zernio social sync"}
+            </div>
+            <div className="mt-0.5 text-[11px] text-textSecondary">
+              {lastSyncedAt
+                ? `Last synced ${formatRelativeTime(lastSyncedAt) || "recently"}`
+                : "Waiting for the first sync"}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-5 text-[11px] text-textSecondary">
+          <div>
+            <span className="text-sm font-semibold text-textPrimary">
+              {visibleAccounts.length}
+            </span>{" "}
+            connected
+          </div>
+          <div className="flex items-center gap-1.5">
+            {reconnectCount > 0 ? (
+              <WifiOff size={12} className="text-amber-500" />
+            ) : (
+              <Wifi size={12} className="text-emerald-500" />
+            )}
+            <span
+              className={cn(reconnectCount > 0 && "text-amber-500")}
+            >
+              {reconnectCount > 0
+                ? `${reconnectCount} need attention`
+                : "All healthy"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div
+          className={cn(
+            "flex items-start gap-3 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3",
+          )}
+        >
+          <AlertTriangle size={15} className="mt-0.5 text-red-500" />
+          <div className="flex-1">
+            <div className="text-xs font-medium text-textPrimary">
+              Could not load social accounts
+            </div>
+            <p className="mt-0.5 text-[11px] text-textSecondary">{error}</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-[11px]"
+            onClick={() => {
+              setError(null);
+              setIsLoading(true);
+              refresh();
+            }}
+          >
+            Retry
+          </Button>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {[0, 1, 2].map((index) => (
+            <div
+              key={index}
+              className="flex items-center gap-3 rounded-xl border border-border bg-settings-card px-4 py-3"
+            >
+              <div className="h-9 w-9 animate-pulse rounded-full bg-settings-hover" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 w-32 animate-pulse rounded bg-settings-hover" />
+                <div className="h-2.5 w-24 animate-pulse rounded bg-settings-hover" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : error ? null : visibleAccounts.length === 0 ? (
+        <div className="relative overflow-hidden rounded-xl border border-dashed border-border px-6 py-10 text-center">
+          <div
+            className={cn(
+              "pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-500/[0.04] via-transparent to-purple-500/[0.04]",
+            )}
+          />
+          <div className="relative flex flex-col items-center">
+            <div className="mb-4 flex -space-x-2">
+              {["instagram", "linkedin", "x", "youtube"].map((slug) => {
+                const platform = getZernioPlatform(slug);
+                const Icon = platform?.icon || Globe;
+                return (
+                  <div
+                    key={slug}
+                    className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-full border-2 border-background ring-1 ring-border",
+                      platform?.bg || settingsTheme.quaternaryBg,
+                    )}
+                  >
+                    <Icon
+                      size={15}
+                      className={platform?.color || "text-textSecondary"}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <h4 className="text-sm font-semibold text-textPrimary">
+              Connect your first social account
+            </h4>
+            <p className="mt-1 max-w-sm text-xs text-textSecondary">
+              Link an account to start syncing DMs, published posts, and
+              analytics into your workspace.
+            </p>
+            <Button
+              size="sm"
+              className="mt-4 h-8 gap-2 text-xs"
+              onClick={() => setIsConnectOpen(true)}
+            >
+              <Plus size={13} />
+              Connect account
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div
+          className={cn(
+            "divide-y divide-border/60 overflow-hidden rounded-xl border border-border",
+            settingsTheme.card,
+          )}
+        >
+          {visibleAccounts.map((account) => {
+            const platform = getZernioPlatform(account.platform);
+            const status = getZernioStatus(account);
+            const name =
+              account.display_name ||
+              account.username ||
+              platform?.label ||
+              account.platform;
+            const lastSynced = formatRelativeTime(account.last_synced_at);
+            const issue =
+              Array.isArray(account.issues) && account.issues.length > 0
+                ? String(account.issues[0])
+                : null;
+
+            return (
+              <div
+                key={account.id}
+                className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-settings-hover"
+              >
+                <ZernioAccountAvatar account={account} />
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="truncate text-sm font-medium text-textPrimary">
+                      {name}
+                    </span>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px] font-medium",
+                        platform?.color || "text-textSecondary",
+                      )}
+                    >
+                      <span>{platform?.label || account.platform}</span>
+                    </span>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 text-[10px] font-medium",
+                        status.text,
+                      )}
+                    >
+                      <span
+                        className={cn("h-1.5 w-1.5 rounded-full", status.dot)}
+                      />
+                      {status.label}
+                    </span>
+                  </div>
+
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-textSecondary">
+                    {account.username && <span>@{account.username}</span>}
+                    {lastSynced && <span>Synced {lastSynced}</span>}
+                    {!account.can_post && !account.needs_reconnect && (
+                      <span className="text-amber-500">Posting unavailable</span>
+                    )}
+                    {issue && (
+                      <span className="max-w-[320px] truncate text-amber-500">
+                        {issue}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-1">
+                  {account.needs_reconnect && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1.5 border-amber-500/30 text-[11px] text-amber-500 hover:bg-amber-500/10 hover:text-amber-400"
+                      onClick={() => handleReconnect(account)}
+                      disabled={reconnectingId === account.id}
+                    >
+                      {reconnectingId === account.id ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        <WifiOff size={12} />
+                      )}
+                      Reconnect
+                    </Button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setDisconnectTarget(account)}
+                    title="Disconnect account"
+                    aria-label={`Disconnect ${name}`}
+                    className={cn(
+                      "rounded p-1.5 text-textSecondary opacity-100 transition-all hover:bg-red-500/10 hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100",
+                    )}
+                  >
+                    <Unplug size={14} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <Dialog
+        open={isConnectOpen}
+        onOpenChange={(open) => {
+          if (!connectingPlatform) setIsConnectOpen(open);
+        }}
+      >
+        <DialogContent
+          className={cn(
+            "border-border text-textPrimary sm:max-w-[560px]",
+            settingsTheme.dialog,
+          )}
+        >
+          <DialogHeader>
+            <DialogTitle>Connect a social account</DialogTitle>
+            <DialogDescription className={settingsTheme.text.secondary}>
+              Choose a platform. You will be redirected to Zernio to authorize
+              the account, then brought back here.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-2 gap-2 py-2 sm:grid-cols-3">
+            {ZERNIO_PLATFORMS.map((platform) => {
+              const Icon = platform.icon;
+              const isConnecting = connectingPlatform === platform.id;
+
+              return (
+                <button
+                  key={platform.id}
+                  type="button"
+                  onClick={() => handleConnect(platform.id)}
+                  disabled={!!connectingPlatform}
+                  className={cn(
+                    "group flex items-center gap-2.5 rounded-lg border border-border px-3 py-2.5 text-left transition-colors",
+                    settingsTheme.card,
+                    "hover:border-textSecondary/40 hover:bg-settings-hover disabled:cursor-not-allowed disabled:opacity-60",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
+                      platform.bg,
+                    )}
+                  >
+                    <Icon size={15} className={platform.color} />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-xs font-medium text-textPrimary">
+                    {platform.label}
+                  </span>
+                  {isConnecting ? (
+                    <Loader2
+                      size={12}
+                      className="animate-spin text-textSecondary"
+                    />
+                  ) : (
+                    <ChevronRight
+                      size={12}
+                      className="text-textSecondary opacity-0 transition-opacity group-hover:opacity-100"
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              className={settingsTheme.button.ghost}
+              onClick={() => setIsConnectOpen(false)}
+              disabled={!!connectingPlatform}
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={!!disconnectTarget}
+        onOpenChange={(open) => {
+          if (!open && !isDisconnecting) setDisconnectTarget(null);
+        }}
+      >
+        <AlertDialogContent className={settingsTheme.dialog}>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-textPrimary">
+              <Unplug size={18} className="text-red-500" />
+              Disconnect account
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-textSecondary">
+              Disconnect{" "}
+              <span className="font-medium text-textPrimary">
+                {disconnectTarget?.display_name ||
+                  disconnectTarget?.username ||
+                  disconnectTarget?.platform}
+              </span>
+              ? Zernio will stop syncing its messages, posts, and analytics, and
+              scheduled posts targeting it may be cancelled.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className={settingsTheme.button.ghost}
+              disabled={isDisconnecting}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                handleDisconnect();
+              }}
+              className="border-none bg-red-600 text-white hover:bg-red-700"
+              disabled={isDisconnecting}
+            >
+              {isDisconnecting ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 size={13} className="animate-spin" />
+                  Disconnecting
+                </span>
+              ) : (
+                "Disconnect"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+};
+
 const AccountsView = ({
   setActiveTab,
+  canManageConfig,
+  accessReady,
 }: {
   setActiveTab: (t: string) => void;
+  canManageConfig?: boolean;
+  accessReady?: boolean;
 }) => {
   const { t } = useTranslation();
   return (
-    <div className="space-y-8">
-      <div className="space-y-4 pt-6 border-t border-border">
+    <div className="space-y-10">
+      <ZernioAccountsSection
+        canManageConfig={canManageConfig}
+        accessReady={accessReady}
+      />
+
+      <div className="space-y-4 pt-8 border-t border-border">
         <h3 className="text-sm font-semibold text-textPrimary">
           {t("settings.settings")}
         </h3>
