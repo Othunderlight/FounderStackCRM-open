@@ -267,6 +267,10 @@ Cookie-based via `dj-rest-auth` with custom tokens (`cccrm-access-token`, `cccrm
 - Docker & Docker Compose (optional)
 
 ### Local Development
+```bash
+cd localdb && chmod +x startdb.sh
+./startdb.sh
+```
 
 ```bash
 # 1. Clone the repo
@@ -285,23 +289,15 @@ cp .env.example .env
 # Edit .env with your values (see Environment Variables below)
 
 # 6. Generate JWT keys
-python -c "
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
-private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-public_key = private_key.public_key()
-with open('jwt_private_key.pem', 'wb') as f:
-    f.write(private_key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
-with open('jwt_public_key.pem', 'wb') as f:
-    f.write(public_key.public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo))
-print('JWT keys generated.')
-"
+python generate_jwt_keys.py
 
 # 7. Run migrations
 python manage.py migrate sites
 python manage.py makemigrations users
 python manage.py migrate
 
+python manage.py makemigrations app dashboard integrations
+python manage.py migrate
 # 7. Create superuser
 python manage.py createsuperuser
 

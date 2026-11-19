@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16
+    container_name: crm_postgres_db
+    environment:
+      POSTGRES_DB: dj_starter_db
+      POSTGRES_USER: dj_starter_user
+      POSTGRES_PASSWORD: dj_starter_password
+    ports:
+      - "5432:5432"  # Exposed locally for Django dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dj_starter_user -d dj_starter_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
