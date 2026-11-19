@@ -2,7 +2,7 @@ import { useStore } from "../store";
 import { toast } from "sonner";
 
 export const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8010";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 export const FAST_AI_BASE_URL =
   import.meta.env.VITE_FAST_AI_BASE_URL || "http://localhost:8080";
 
