@@ -225,6 +225,16 @@ To disconnect: `DELETE /accounts/{id}/`.
 
 ## 5. Inbox / DMs
 
+### Conversation model (read this first)
+
+One conversation row = one thread with one participant. The inbox list is a list of threads, not a list of messages.
+
+- The list shows `last_message_text` / `last_message_at` as the preview. These are updated in place when a new message arrives; the backend does not create a second row for the same thread.
+- Messages are loaded when the user opens a thread: `GET /conversations/{id}/messages/`.
+- `conversation_id` is the id the Zernio inbox API expects. For Instagram it is the platform conversation id (for example `1724801239213945`). Webhooks expose the same id as `platformConversationId`; the backend maps both to one row.
+- `GET /conversations/{id}/messages/` refreshes from Zernio by default and then returns the mirrored messages. Add `?refresh=false` to read only the local mirror.
+- Opening a thread for the first time may fetch messages from Zernio. If the provider call fails, the endpoint still returns whatever is already mirrored and logs a warning.
+
 ### Sync conversations
 
 ```ts
@@ -251,8 +261,8 @@ Conversation shape:
 
 ```json
 {
-  "id": 11,
-  "profile": 1,
+  "id": "1af0fcc9-1083-4061-9c1e-0b8930ff986b",
+  "profile": "…",
   "account": { "...": "nested ZernioAccount" },
   "conversation_id": "6aff123fc03e927f9bc82466",
   "platform": "instagram",
@@ -277,12 +287,12 @@ const res = await apiFetch(
 const { results } = await res.json();
 ```
 
-`GET` returns paginated messages in chronological order. Message shape:
+`GET` returns paginated messages in chronological order. It refreshes from Zernio first unless you pass `?refresh=false`. Use `?sync_limit=50` to cap the refresh (1–100). Message shape:
 
 ```json
 {
-  "id": 42,
-  "conversation": 11,
+  "id": "65f699d7-50ac-4171-a078-e868c86016b7",
+  "conversation": "1af0fcc9-1083-4061-9c1e-0b8930ff986b",
   "message_id": "6aff16960413d9a678f8a578",
   "direction": "incoming",
   "text": "Hi, is this still available?",
@@ -562,7 +572,7 @@ All paths below are relative to `/api/integrations/zernio/`.
 
 ---
 
-## 12. Verification status (backend, Nov 19 2026)
+## 12. Verification status (backend, Nov 20 2026)
 
 Already verified:
 
@@ -571,13 +581,34 @@ Already verified:
 - Replaying the same event id returns `200 {"ok": true, "duplicate": true}`.
 - A real Zernio `message.sent` webhook was received and processed.
 - Events are persisted in `ZernioWebhookEvent` with status `processed`.
+- Instagram conversations are deduplicated: list rows and webhooks now share one id per thread. Duplicate rows for the same participant were merged.
+- Opening a conversation loads its messages from Zernio. The `accountId` requirement is now sent, so the refresh succeeds.
+- 15 existing integration tests pass.
 
-Local webhook test (repeatable):
+Local webhook test (repeatable, committed management command):
 
 ```bash
 cd backend
-.venv/bin/python /tmp/opencode/zernio_webhook_test.py
+source .venv/bin/activate
+export DJANGO_DEBUG=True
+
+# Local dev server
+python manage.py zernio_webhook_smoke --replay --cleanup
+
+# Through the ngrok tunnel
+python manage.py zernio_webhook_smoke \
+  --url https://secure-marmot-poorly.ngrok-free.app/api/integrations/zernio/webhook/ \
+  --replay --cleanup
 ```
+
+Expected output:
+
+```text
+delivery: HTTP 200 {"ok":true}
+replay: HTTP 200 {"ok":true,"duplicate":true}
+```
+
+The command signs a realistic `message.received` payload with `ZERNIO_WEBHOOK_SECRET` and posts it. Add `--cleanup` to remove the generated `Smoke Test` conversation and event afterwards.
 
 Or with curl, where `$SECRET` is `ZERNIO_WEBHOOK_SECRET` and `$BODY` is the compact JSON:
 
@@ -640,9 +671,9 @@ export const zernioApi = {
   },
   conversations: (query = "") =>
     zernio<{ results: ZernioConversation[] }>(`/conversations/${query}`),
-  messages: (id: number) =>
+  messages: (id: string) =>
     zernio<{ results: ZernioMessage[] }>(`/conversations/${id}/messages/`),
-  sendMessage: (id: number, message: string, idempotencyKey: string) =>
+  sendMessage: (id: string, message: string, idempotencyKey: string) =>
     zernio<ZernioMessage>(`/conversations/${id}/messages/`, {
       method: "POST",
       body: JSON.stringify({ message, idempotency_key: idempotencyKey }),
@@ -659,3 +690,22 @@ export const zernioApi = {
     }),
 };
 ```
+
+---
+
+## 14. People sync and merged timeline
+
+The conversation → person linking, the manual import button, and the merged
+activity/message timeline are documented separately:
+
+**`backend/integrations/zernio/FRONTEND_PEOPLE_SYNC.md`**
+
+Quick summary:
+
+- `POST /api/integrations/zernio/conversations/import-people/` links
+  conversations to people (idempotent, supports `dry_run`).
+- `GET /api/people/{id}/` now returns `identities[]`.
+- `GET /api/integrations/zernio/conversations/?person={id}` lists a person's
+  threads.
+- `GET /api/people/{id}/timeline/` merges `ActivityLog` rows and Zernio
+  messages. Messages are not copied into `ActivityLog`.

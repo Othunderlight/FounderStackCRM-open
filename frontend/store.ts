@@ -27,6 +27,20 @@ import { translations } from "./src/i18n/translations";
 let interactionTypesRequest: Promise<void> | null = null;
 let currentUserRequest: Promise<void> | null = null;
 
+const mapPersonIdentities = (identities: any[] | undefined) =>
+  (identities || []).map((identity: any) => ({
+    id: String(identity.id),
+    person: String(identity.person),
+    platform: identity.platform,
+    externalId: identity.external_id,
+    username: identity.username,
+    displayName: identity.display_name,
+    avatar: identity.avatar,
+    account: identity.account ? String(identity.account) : null,
+    metadata: identity.metadata || {},
+    lastSeenAt: identity.last_seen_at,
+  }));
+
 interface DrawerItem {
   id: string;
   type: EntityType;
@@ -1773,6 +1787,7 @@ export const useStore = create<AppState>()(
               recommendedAction: p.recommended_action,
               leadType: p.lead_type,
               leadSource: p.lead_source,
+              identities: mapPersonIdentities(p.identities),
             }));
 
             set((state) => {
@@ -1818,6 +1833,7 @@ export const useStore = create<AppState>()(
               recommendedAction: p.recommended_action,
               leadType: p.lead_type,
               leadSource: p.lead_source,
+              identities: mapPersonIdentities(p.identities),
             };
             set((state) => {
               const existingIds = new Set(state.people.map((person) => person.id));
@@ -2107,6 +2123,9 @@ export const useStore = create<AppState>()(
               relatedCompanyId: a.related_company
                 ? String(a.related_company)
                 : undefined,
+              conversationId: a.conversation
+                ? String(a.conversation)
+                : undefined,
               userId: a.user_name,
               personName: a.person_name,
               companyName: a.company_name,
@@ -2157,6 +2176,7 @@ export const useStore = create<AppState>()(
               date: a.date,
               relatedPersonId: a.related_person ? String(a.related_person) : undefined,
               relatedCompanyId: a.related_company ? String(a.related_company) : undefined,
+              conversationId: a.conversation ? String(a.conversation) : undefined,
               userId: a.user_name,
               personName: a.person_name,
               companyName: a.company_name,
@@ -2211,6 +2231,9 @@ export const useStore = create<AppState>()(
                 : undefined,
               relatedCompanyId: a.related_company
                 ? String(a.related_company)
+                : undefined,
+              conversationId: a.conversation
+                ? String(a.conversation)
                 : undefined,
               userId: a.user_name,
               personName: a.person_name,
@@ -2269,6 +2292,9 @@ export const useStore = create<AppState>()(
                       : undefined,
                     relatedCompanyId: a.related_company
                       ? String(a.related_company)
+                      : undefined,
+                    conversationId: a.conversation
+                      ? String(a.conversation)
                       : undefined,
                     userId: a.user_name,
                     personName: a.person_name,

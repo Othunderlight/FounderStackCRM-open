@@ -56,21 +56,12 @@ import {
   Ban,
   KeyRound,
   Bot,
-  AtSign,
-  Facebook,
-  Gamepad2,
-  Instagram,
   Loader2,
-  Music2,
-  Pin,
-  Slack,
   Unplug,
   Wifi,
   WifiOff,
-  Youtube,
-  Twitter,
-  type LucideIcon,
 } from "lucide-react";
+
 import {
   googleLogin,
   linkGoogle,
@@ -108,7 +99,11 @@ import {
   disconnectZernioAccount,
 } from "../lib/zernio";
 import type { ZernioAccount, ZernioProfile } from "../lib/zernio";
-import { MessageCircle } from 'lucide-react';
+import {
+  ZERNIO_CONNECTABLE_PLATFORMS,
+  getZernioPlatform,
+} from "./zernio/platforms";
+import { ImportConversationsDialog } from "./zernio/ImportConversationsDialog";
 
 type RoleSummary = {
   id: string;
@@ -355,6 +350,9 @@ const SettingsLayout = () => {
   const canUseAgents =
     !!myAccess?.permissions?.includes("*") ||
     !!myAccess?.permissions?.includes("agent.use");
+  const canImportPeople =
+    !!myAccess?.permissions?.includes("*") ||
+    !!myAccess?.permissions?.includes("people.write");
 
   // Handle tab changes - update URL hash
   const handleTabChange = (tab: string) => {
@@ -394,6 +392,7 @@ const SettingsLayout = () => {
             setActiveTab={setActiveTabWrapper}
             canManageConfig={canManageConfig}
             accessReady={isAccessLoaded}
+            canImportPeople={canImportPeople}
           />
         );
       case "Emails":
@@ -1391,102 +1390,6 @@ const ExperienceView = () => {
 const ZERNIO_PENDING_KEY = "zernio:connect:pending";
 const ZERNIO_PENDING_TTL_MS = 20 * 60 * 1000;
 
-const ZERNIO_PLATFORMS: {
-  id: string;
-  label: string;
-  icon: LucideIcon;
-  color: string;
-  bg: string;
-}[] = [
-  {
-    id: "instagram",
-    label: "Instagram",
-    icon: Instagram,
-    color: "text-pink-500",
-    bg: "bg-pink-500/10",
-  },
-  {
-    id: "facebook",
-    label: "Facebook",
-    icon: Facebook,
-    color: "text-blue-500",
-    bg: "bg-blue-500/10",
-  },
-  {
-    id: "linkedin",
-    label: "LinkedIn",
-    icon: Linkedin,
-    color: "text-sky-400",
-    bg: "bg-sky-500/10",
-  },
-  {
-    id: "twitter",
-    label: "X",
-    icon: Twitter,
-    color: "text-textPrimary",
-    bg: "bg-zinc-500/10",
-  },
-  {
-    id: "tiktok",
-    label: "TikTok",
-    icon: Music2,
-    color: "text-cyan-500",
-    bg: "bg-cyan-500/10",
-  },
-  {
-    id: "youtube",
-    label: "YouTube",
-    icon: Youtube,
-    color: "text-red-500",
-    bg: "bg-red-500/10",
-  },
-  {
-    id: "threads",
-    label: "Threads",
-    icon: AtSign,
-    color: "text-textPrimary",
-    bg: "bg-zinc-500/10",
-  },
-  {
-    id: "pinterest",
-    label: "Pinterest",
-    icon: Pin,
-    color: "text-rose-500",
-    bg: "bg-rose-500/10",
-  },
-  {
-    id: "reddit",
-    label: "Reddit",
-    icon: MessageCircle,
-    color: "text-orange-500",
-    bg: "bg-orange-500/10",
-  },
-  {
-    id: "discord",
-    label: "Discord",
-    icon: Gamepad2,
-    color: "text-indigo-500",
-    bg: "bg-indigo-500/10",
-  },
-  {
-    id: "slack",
-    label: "Slack",
-    icon: Slack,
-    color: "text-fuchsia-500",
-    bg: "bg-fuchsia-500/10",
-  },
-  {
-    id: "googlebusiness",
-    label: "Google Business",
-    icon: Building2,
-    color: "text-amber-500",
-    bg: "bg-amber-500/10",
-  },
-];
-
-const getZernioPlatform = (slug: string) =>
-  ZERNIO_PLATFORMS.find((platform) => platform.id === slug);
-
 const zernioErrorMessage = (error: unknown) => {
   if (error instanceof ZernioError) return error.message;
   if (error instanceof Error) return error.message;
@@ -1590,16 +1493,21 @@ const ZernioAccountAvatar = ({ account }: { account: ZernioAccount }) => {
 const ZernioAccountsSection = ({
   canManageConfig,
   accessReady,
+  canImportPeople,
 }: {
   canManageConfig?: boolean;
   accessReady?: boolean;
+  canImportPeople?: boolean;
 }) => {
+  const { fetchPeople } = useStore();
+  const { t } = useTranslation();
   const [profile, setProfile] = useState<ZernioProfile | null>(null);
   const [accounts, setAccounts] = useState<ZernioAccount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isConnectOpen, setIsConnectOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [connectingPlatform, setConnectingPlatform] = useState<string | null>(
     null,
   );
@@ -1923,7 +1831,18 @@ const ZernioAccountsSection = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {canImportPeople && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-2 text-xs"
+              onClick={() => setIsImportOpen(true)}
+            >
+              <Users size={13} />
+              {t("zernio.importButton")}
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -2210,7 +2129,7 @@ const ZernioAccountsSection = ({
           </DialogHeader>
 
           <div className="grid grid-cols-2 gap-2 py-2 sm:grid-cols-3">
-            {ZERNIO_PLATFORMS.map((platform) => {
+            {ZERNIO_CONNECTABLE_PLATFORMS.map((platform) => {
               const Icon = platform.icon;
               const isConnecting = connectingPlatform === platform.id;
 
@@ -2317,6 +2236,20 @@ const ZernioAccountsSection = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ImportConversationsDialog
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        onImported={(result) => {
+          toast.success(
+            t("zernio.importSuccess", {
+              linked: result.linked,
+              created: result.created_people,
+            }),
+          );
+          fetchPeople();
+        }}
+      />
     </div>
   );
 };
@@ -2325,10 +2258,12 @@ const AccountsView = ({
   setActiveTab,
   canManageConfig,
   accessReady,
+  canImportPeople,
 }: {
   setActiveTab: (t: string) => void;
   canManageConfig?: boolean;
   accessReady?: boolean;
+  canImportPeople?: boolean;
 }) => {
   const { t } = useTranslation();
   return (
@@ -2336,6 +2271,7 @@ const AccountsView = ({
       <ZernioAccountsSection
         canManageConfig={canManageConfig}
         accessReady={accessReady}
+        canImportPeople={canImportPeople}
       />
 
       <div className="space-y-4 pt-8 border-t border-border">

@@ -2226,6 +2226,24 @@ Yes. Go to Settings > Members and update the role there.
     },
     adding: { en: "Adding...", ar: "عم نحفظ..." },
     linked: { en: "LINKED", ar: "مرتبط بـ" },
+    typeEmail: { en: "Email", ar: "إيميل" },
+    typeCall: { en: "Call", ar: "مكالمة" },
+    typeMeeting: { en: "Meeting", ar: "اجتماع" },
+    typeMessage: { en: "Message", ar: "رسالة" },
+    typeUpdate: { en: "Update", ar: "تحديث" },
+    channelEmail: { en: "Email", ar: "إيميل" },
+    channelLinkedin: { en: "LinkedIn", ar: "لينكدان" },
+    channelWhatsapp: { en: "WhatsApp", ar: "واتساب" },
+    channelSystem: { en: "System", ar: "السيستم" },
+    activityTitleRequired: {
+      en: "Add a title and content for this activity.",
+      ar: "ضيف عنوان وتفاصيل لهالنشاط.",
+    },
+    activityAdded: { en: "Activity added", ar: "انضاف النشاط" },
+    activityAddFailed: {
+      en: "Could not add the activity.",
+      ar: "ما قدرنا نضيف النشاط.",
+    },
     due: { en: "Due", ar: "موعده" },
     personAbout: {
       en: "{name} is a {title} at {company}. They were first added on {date}.",
@@ -2708,6 +2726,134 @@ Yes. Go to Settings > Members and update the role there.
     city: { en: "City", ar: "المدينة" },
     jobTitle: { en: "Job Title", ar: "المنصب" },
     lastUpdate: { en: "Last update", ar: "آخر تحديث" },
+  },
+  zernio: {
+    conversations: { en: "Conversations", ar: "المحادثات" },
+    identities: { en: "Channels", ar: "القنوات" },
+    activityAndMessages: {
+      en: "Activity & messages",
+      ar: "الأنشطة والرسائل",
+    },
+    filterAll: { en: "All", ar: "الكل" },
+    filterMessages: { en: "Messages", ar: "الرسائل" },
+    filterActivities: { en: "Activities", ar: "الأنشطة" },
+    allThreads: { en: "All conversations", ar: "كل المحادثات" },
+    refresh: { en: "Refresh", ar: "تحديث" },
+    retry: { en: "Retry", ar: "حاول مرة تانية" },
+    loadOlder: { en: "Load older messages", ar: "شوف الأقدم" },
+    noTimeline: { en: "No activity yet", ar: "ما في نشاط بعد" },
+    timelineLoadFailed: {
+      en: "Could not load this timeline.",
+      ar: "ما قدرنا نحمل هالسجل.",
+    },
+    attachmentOnly: { en: "[Attachment]", ar: "[مرفق]" },
+    attachments: {
+      en: "{count} attachment(s)",
+      ar: "{count} مرفق",
+    },
+    openThread: { en: "Open thread", ar: "افتح المحادثة" },
+    replyingOn: { en: "Replying on {platform}", ar: "الرد عبر {platform}" },
+    selectThreadToReply: {
+      en: "Select a conversation to reply",
+      ar: "اختار محادثة للرد",
+    },
+    selectThread: { en: "Select conversation", ar: "اختار محادثة" },
+    selectThreadFirst: {
+      en: "Select a conversation first",
+      ar: "اختار محادثة أول",
+    },
+    messagePlaceholder: {
+      en: "Message {name} on {platform}...",
+      ar: "رسالة لـ {name} على {platform}...",
+    },
+    replyPlaceholder: {
+      en: "Reply to {name}...",
+      ar: "رد على {name}...",
+    },
+    noLinkedThreadsHint: {
+      en: "No linked conversations yet. Import Instagram conversations to people from Settings → Accounts.",
+      ar: "ما في محادثات مرتبطة. استورد محادثات إنستغرام للأشخاص من الإعدادات ← الحسابات.",
+    },
+    send: { en: "Send", ar: "إرسال" },
+    messageSent: { en: "Message sent", ar: "انبعتت الرسالة" },
+    messageFailed: {
+      en: "Could not send the message.",
+      ar: "ما قدرنا نبعت الرسالة.",
+    },
+    searchConversations: {
+      en: "Search conversations...",
+      ar: "دوّر على محادثة...",
+    },
+    noConversations: { en: "No conversations yet", ar: "ما في محادثات بعد" },
+    noConversationsHint: {
+      en: "Sync conversations in the inbox or import them to people from Settings → Accounts.",
+      ar: "زامن المحادثات أو استوردها للأشخاص من الإعدادات ← الحسابات.",
+    },
+    conversationsLoadFailed: {
+      en: "Could not load conversations.",
+      ar: "ما قدرنا نحمل المحادثات.",
+    },
+    messagesLoadFailed: {
+      en: "Could not load messages.",
+      ar: "ما قدرنا نحمل الرسائل.",
+    },
+    noMessagesYet: { en: "No messages yet", ar: "ما في رسائل بعد" },
+    selectConversation: {
+      en: "Select a conversation",
+      ar: "اختار محادثة",
+    },
+    replyPermissionMissing: {
+      en: "You need agent access to send messages.",
+      ar: "بدك صلاحية الوصول للوكيل لإرسال الرسائل.",
+    },
+    importButton: {
+      en: "Import conversations",
+      ar: "استيراد المحادثات",
+    },
+    importTitle: {
+      en: "Import conversations to people",
+      ar: "استيراد المحادثات للأشخاص",
+    },
+    importDescription: {
+      en: "Create a CRM person for every Zernio conversation that is not linked yet.",
+      ar: "سوي شخص جديد بكل محادثة زيرنيو ما مربوطة بعد.",
+    },
+    importExplain: {
+      en: "Running the preview counts what would happen without changing anything. The import is safe to re-run: conversations that are already linked are skipped.",
+      ar: "المعاينة بتحسب شو رح يصير بدون أي تعديل. الاستيراد آمن للتكرار: المحادثات المربوطة بتنخطى.",
+    },
+    importTotal: { en: "Conversations", ar: "المحادثات" },
+    importToLink: { en: "Will link", ar: "رح ينربط" },
+    importAlreadyLinked: { en: "Already linked", ar: "مربوط مسبقاً" },
+    importNewPeople: { en: "New people", ar: "أشخاص جدد" },
+    importNothingToDo: {
+      en: "Everything is already linked.",
+      ar: "كلشي مربوط مسبقاً.",
+    },
+    importErrors: {
+      en: "{count} conversation(s) failed",
+      ar: "{count} محادثة صار فيها خطأ",
+    },
+    preview: { en: "Preview", ar: "معاينة" },
+    previewing: { en: "Counting...", ar: "عم نعد..." },
+    previewFailed: {
+      en: "Could not preview the import.",
+      ar: "ما قدرنا نعمل معاينة.",
+    },
+    importNow: { en: "Import now", ar: "استورد الآن" },
+    importing: { en: "Importing...", ar: "عم نستورد..." },
+    importFailed: {
+      en: "Could not import conversations.",
+      ar: "ما قدرنا نستورد المحادثات.",
+    },
+    importSuccess: {
+      en: "Linked {linked} conversations and created {created} people.",
+      ar: "انربطت {linked} محادثة وانضاف {created} شخص.",
+    },
+    importPreviewFailed: {
+      en: "Could not preview the import.",
+      ar: "ما قدرنا نعمل معاينة.",
+    },
   },
 } as const;
 

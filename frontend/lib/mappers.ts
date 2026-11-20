@@ -21,6 +21,18 @@ export function mapPersonFromBackend(data: any): Person {
         stage: data.stage,
         lastAction: data.last_action,
         leadType: data.lead_type,
+        identities: (data.identities || []).map((identity: any) => ({
+            id: String(identity.id),
+            person: String(identity.person),
+            platform: identity.platform,
+            externalId: identity.external_id,
+            username: identity.username,
+            displayName: identity.display_name,
+            avatar: identity.avatar,
+            account: identity.account ? String(identity.account) : null,
+            metadata: identity.metadata || {},
+            lastSeenAt: identity.last_seen_at,
+        })),
     };
 }
 
@@ -152,6 +164,7 @@ export function mapActivityFromBackend(data: any): ActivityLog {
         date: data.date,
         relatedPersonId: data.related_person,
         relatedCompanyId: data.related_company,
+        conversationId: data.conversation,
         userId: data.user,
     };
 }

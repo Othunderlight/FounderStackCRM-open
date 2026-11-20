@@ -3,6 +3,9 @@ import { useStore } from "../store";
 import { useNavigate } from "react-router-dom";
 import { LinkifiedText } from "./LinkifiedText";
 import { isPinned, togglePin, sortWithPinnedFirst } from "../lib/pins";
+import { PersonConversations } from "./zernio/PersonConversations";
+import { PersonTimeline } from "./zernio/PersonTimeline";
+import { PersonIdentities } from "./zernio/PersonIdentities";
 import {
   X,
   ExternalLink,
@@ -380,6 +383,16 @@ const RecordView = ({
     confirm,
   } = useStore();
 
+  const [conversationFocus, setConversationFocus] = useState<string | null>(
+    null,
+  );
+  const canUseAgent =
+    !!myAccess?.permissions?.includes("*") ||
+    !!myAccess?.permissions?.includes("agent.use");
+  const canReadPeople =
+    !!myAccess?.permissions?.includes("*") ||
+    !!myAccess?.permissions?.includes("people.read");
+
   const fieldMapping: Record<string, string> = {
     companyName: "company",
     jobTitle: "job_title",
@@ -628,7 +641,7 @@ const RecordView = ({
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-border mb-0">
+      <div className="flex items-center gap-2 border-b border-border mb-0 overflow-x-auto no-scrollbar">
         <TabItem
           label={t("contextDrawer.home")}
           icon={Home}
@@ -676,6 +689,14 @@ const RecordView = ({
             onClick={() => setActiveTab("Context")}
           />
         )}
+        {type === "person" && canUseAgent && (
+          <TabItem
+            label={t("zernio.conversations")}
+            icon={MessageCircle}
+            active={activeTab === "Conversations"}
+            onClick={() => setActiveTab("Conversations")}
+          />
+        )}
       </div>
 
       {/* Content */}
@@ -709,12 +730,34 @@ const RecordView = ({
         {activeTab === "Actions" && (
           <ActionsTab data={data} type={type} canWrite={canWrite} />
         )}
-        {activeTab === "Context" && (
-          <ContextTab
-            data={data}
-            type={type}
-            onOpenAutoMsgParser={onOpenAutoMsgParser}
-            canWrite={canWriteEntity("activity")}
+        {activeTab === "Context" &&
+          (type === "person" && canReadPeople ? (
+            <PersonTimeline
+              personId={data.id}
+              personName={data.name}
+              canWrite={canWriteEntity("activity")}
+              canReply={canUseAgent}
+              variant="drawer"
+              onOpenConversation={(conversationId) => {
+                setConversationFocus(conversationId);
+                setActiveTab("Conversations");
+              }}
+            />
+          ) : (
+            <ContextTab
+              data={data}
+              type={type}
+              onOpenAutoMsgParser={onOpenAutoMsgParser}
+              canWrite={canWriteEntity("activity")}
+            />
+          ))}
+        {activeTab === "Conversations" && type === "person" && canUseAgent && (
+          <PersonConversations
+            personId={data.id}
+            personName={data.name}
+            canReply={canUseAgent}
+            initialConversationId={conversationFocus}
+            variant="drawer"
           />
         )}
       </div>
@@ -737,7 +780,7 @@ const RecordView = ({
 const TabItem = ({ label, icon: Icon, active, onClick, badge }: any) => (
   <button
     onClick={onClick}
-    className={`flex items-center gap-2 py-2 px-3 relative transition-all cursor-pointer rounded-t-md border-b-2 ${active ? "text-textPrimary border-textPrimary bg-card-hover" : "text-textSecondary border-transparent hover:text-textPrimary hover:bg-card-hover"}`}
+    className={`flex shrink-0 items-center gap-2 py-2 px-3 relative transition-all cursor-pointer rounded-t-md border-b-2 ${active ? "text-textPrimary border-textPrimary bg-card-hover" : "text-textSecondary border-transparent hover:text-textPrimary hover:bg-card-hover"}`}
   >
     <Icon size={14} />
     <span className="text-sm font-medium">{label}</span>
@@ -2626,6 +2669,17 @@ const HomeTab = ({
               canWrite={canWrite}
               onSave={(v: any) => updatePerson(data.id, { linkedin: v })}
             />
+          )}
+          {data.identities?.length > 0 && (
+            <div className="flex items-start gap-3 py-2">
+              <MessageCircle size={12} className="mt-1 shrink-0 text-textSecondary" />
+              <div className="min-w-0 flex-1">
+                <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-textSecondary">
+                  {t("zernio.identities")}
+                </div>
+                <PersonIdentities identities={data.identities} compact />
+              </div>
+            </div>
           )}
           {!isFieldHidden("companyName") && (
             <EditablePropertyRow

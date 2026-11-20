@@ -4,6 +4,19 @@ export type LeadSource = string;
 
 export type EntityType = 'person' | 'company' | 'opportunity' | 'task' | 'note' | 'activity' | 'report';
 
+export interface PersonIdentity {
+  id: string;
+  person: string;
+  platform: string;
+  externalId: string;
+  username?: string | null;
+  displayName?: string | null;
+  avatar?: string | null;
+  account?: string | null;
+  metadata?: Record<string, any>;
+  lastSeenAt?: string | null;
+}
+
 export interface Person {
   id: string;
   name: string;
@@ -24,6 +37,7 @@ export interface Person {
   recommendedAction?: string;
   leadType?: LeadType;
   leadSource?: LeadSource;
+  identities?: PersonIdentity[];
 }
 
 export interface Company {
@@ -101,6 +115,7 @@ export interface ActivityLog {
   date: string;
   relatedPersonId?: string;
   relatedCompanyId?: string;
+  conversationId?: string; // Linked Zernio conversation (chat threads)
   userId?: string; // "You" or "System" or "Contact Name"
   createdBy?: string;
   personName?: string;

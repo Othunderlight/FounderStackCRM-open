@@ -58,6 +58,9 @@ import {
   Direction,
 } from "../types";
 import { isPinned, togglePin, sortWithPinnedFirst } from "../lib/pins";
+import { PersonConversations } from "./zernio/PersonConversations";
+import { PersonTimeline } from "./zernio/PersonTimeline";
+import { PersonIdentities } from "./zernio/PersonIdentities";
 import {
   Dialog,
   DialogContent,
@@ -2722,7 +2725,7 @@ const EditableSidebarProp = ({
 const TabItem = ({ label, icon: Icon, active, onClick, badge }: any) => (
   <button
     onClick={onClick}
-    className={`flex items-center gap-2 py-3 px-4 relative transition-all cursor-pointer rounded-t-md border-b-2 ${active ? "text-textPrimary border-textPrimary bg-white/5" : "text-textSecondary border-transparent hover:text-textPrimary hover:bg-white/5"}`}
+    className={`flex shrink-0 items-center gap-2 py-3 px-4 relative transition-all cursor-pointer rounded-t-md border-b-2 ${active ? "text-textPrimary border-textPrimary bg-white/5" : "text-textSecondary border-transparent hover:text-textPrimary hover:bg-white/5"}`}
   >
     <Icon size={16} />
     <span className="font-medium text-sm">{label}</span>
@@ -2857,6 +2860,16 @@ const RecordPage = ({
   const [activeTab, setActiveTab] = useState(
     location.state?.initialTab || "Home",
   );
+  const [conversationFocus, setConversationFocus] = useState<string | null>(
+    null,
+  );
+
+  const canUseAgent =
+    !!myAccess?.permissions?.includes("*") ||
+    !!myAccess?.permissions?.includes("agent.use");
+  const canReadPeople =
+    !!myAccess?.permissions?.includes("*") ||
+    !!myAccess?.permissions?.includes("people.read");
 
   useEffect(() => {
     if (isMobile && id) {
@@ -3105,6 +3118,14 @@ const RecordPage = ({
                 icon={MessageSquare}
                 active={activeTab === "Context"}
                 onClick={() => setActiveTab("Context")}
+              />
+            )}
+            {type === "person" && canUseAgent && (
+              <TabItem
+                label={t("zernio.conversations")}
+                icon={MessageCircle}
+                active={activeTab === "Conversations"}
+                onClick={() => setActiveTab("Conversations")}
               />
             )}
           </div>
@@ -3357,14 +3378,35 @@ const RecordPage = ({
               />
             )}
 
-            {activeTab === "Context" && (
-              <UnifiedContextFeed
-                activities={relatedActivities}
-                entityId={id || ""}
-                entityName={data.name}
-                onAddActivity={addActivity}
-                user={user}
-                canWrite={canWriteEntity("activity")}
+            {activeTab === "Context" &&
+              (type === "person" && canReadPeople ? (
+                <PersonTimeline
+                  personId={id || ""}
+                  personName={data.name}
+                  canWrite={canWriteEntity("activity")}
+                  canReply={canUseAgent}
+                  onOpenConversation={(conversationId) => {
+                    setConversationFocus(conversationId);
+                    setActiveTab("Conversations");
+                  }}
+                />
+              ) : (
+                <UnifiedContextFeed
+                  activities={relatedActivities}
+                  entityId={id || ""}
+                  entityName={data.name}
+                  onAddActivity={addActivity}
+                  user={user}
+                  canWrite={canWriteEntity("activity")}
+                />
+              ))}
+
+            {activeTab === "Conversations" && type === "person" && canUseAgent && (
+              <PersonConversations
+                personId={id || ""}
+                personName={data.name}
+                canReply={canUseAgent}
+                initialConversationId={conversationFocus}
               />
             )}
           </div>
@@ -3523,6 +3565,15 @@ const RecordPage = ({
                       canWrite={canWrite}
                       onSave={(v: string) => handleSidebarUpdate("linkedin", v)}
                     />
+                  )}
+                  {data.identities?.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-textSecondary">
+                        <MessageCircle size={11} />
+                        {t("zernio.identities")}
+                      </div>
+                      <PersonIdentities identities={data.identities} compact />
+                    </div>
                   )}
                   <div className="h-px bg-border/50 my-6" />
                   {!isFieldHidden("leadType") && (
