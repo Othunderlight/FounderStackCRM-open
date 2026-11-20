@@ -398,10 +398,31 @@ def _ensure_conversation(
         participant, "avatar", "avatarUrl", "profilePicture"
     )
 
+    def _is_placeholder_name(value: Any) -> bool:
+        return str(value or "").strip().lower() in {
+            "instagram user",
+            "facebook user",
+            "unknown",
+        }
+
     if participant_name:
-        values["participant_name"] = participant_name
+        # Do not replace a resolved name with Instagram's placeholder.
+        if not (
+            _is_placeholder_name(participant_name)
+            and existing
+            and existing.participant_name
+            and not _is_placeholder_name(existing.participant_name)
+        ):
+            values["participant_name"] = participant_name
     if participant_username:
-        values["participant_username"] = participant_username
+        # Do not replace a real handle with a numeric id fallback.
+        if not (
+            str(participant_username).isdigit()
+            and existing
+            and existing.participant_username
+            and not str(existing.participant_username).isdigit()
+        ):
+            values["participant_username"] = participant_username
     if participant_id:
         values["participant_id"] = str(participant_id)
     if participant_avatar:
@@ -437,7 +458,10 @@ def _apply_message(
     sent_at: Any = None,
     text: str | None = None,
 ) -> tuple[ZernioMessage, bool]:
-    message_id = _first(payload, "id", "messageId", "_id")
+    # Webhooks expose Zernio's internal id as ``id`` and the platform id as
+    # ``platformMessageId``. The inbox API only exposes the platform id as
+    # ``id``. Prefer the platform id so both sources address the same row.
+    message_id = _first(payload, "platformMessageId", "id", "messageId", "_id")
     existing = (
         ZernioMessage.objects.filter(message_id=str(message_id)).first()
         if message_id
@@ -666,7 +690,7 @@ def send_message(
         attachments=attachments,
     )
     data = response.get("data", response)
-    message_id = _first(data, "messageId", "id", "message_id")
+    message_id = _first(data, "platformMessageId", "messageId", "id", "message_id")
 
     message, _ = ZernioMessage.objects.update_or_create(
         message_id=str(message_id) if message_id else f"local-{idempotency_key}",
@@ -1085,12 +1109,35 @@ def handle_webhook_event(
                 }
 
             sender = message_payload.get("sender") or {}
+            event_direction = (
+                "outgoing"
+                if event_name
+                in {
+                    "message.sent",
+                    "message.delivered",
+                    "message.read",
+                    "message.failed",
+                }
+                else "incoming"
+            )
+            message_direction = str(
+                _first(message_payload, "direction", default=event_direction)
+                or event_direction
+            ).lower()
+            # For outgoing events the sender is the connected account, not the
+            # participant. Only use the sender as a participant fallback for
+            # incoming messages.
+            participant = (
+                sender
+                if isinstance(sender, dict) and message_direction != "outgoing"
+                else None
+            )
             conversation = _ensure_conversation(
                 profile,
                 conversation_payload,
                 account_id=account_id,
                 platform=platform or _first(message_payload, "platform"),
-                participant=sender if isinstance(sender, dict) else None,
+                participant=participant,
                 last_message=_first(message_payload, "text", "message", "body"),
                 last_message_at=_first(
                     payload, "timestamp"

@@ -278,12 +278,23 @@ People-sync and timeline guide: `integrations/zernio/FRONTEND_PEOPLE_SYNC.md`.
 
 `POST /api/integrations/zernio/conversations/import-people/` links unlinked
 conversations to CRM people. It creates a `Person` and `PersonIdentity` when no
-match exists. It is idempotent and supports `dry_run`, `limit`, and
-`conversation_ids`.
+match exists, and with `update_existing` (default) it repairs identities and
+names after Zernio resolves them. It is idempotent and supports `dry_run`,
+`limit`, `conversation_ids`, and `update_existing`.
 
 `GET /api/people/{id}/timeline/` returns a merged, newest-first timeline of
 `ActivityLog` rows and Zernio messages. Messages are read from the linked
-conversations and are not copied into `ActivityLog`.
+conversations and are not copied into `ActivityLog`. Message items require
+`agent.use` in addition to `people.read`.
+
+Messages can be stored twice when a webhook uses Zernio's internal message id
+and the inbox API uses the platform id. The service now canonicalises on the
+platform id. Merge existing duplicates with:
+
+```bash
+python manage.py zernio_dedupe_messages --dry-run
+python manage.py zernio_dedupe_messages
+```
 
 ### Dashboard
 

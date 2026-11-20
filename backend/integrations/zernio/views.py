@@ -68,13 +68,26 @@ logger = logging.getLogger(__name__)
 
 
 def _error_response(exc: ZernioAPIError) -> Response:
+    payload = {
+        "detail": exc.message,
+        "code": exc.code,
+        "status_code": exc.status_code,
+        "details": exc.details,
+    }
+    # Surface the upstream platform context so the UI can distinguish a
+    # platform restriction (for example Meta's 24-hour window) from a local
+    # permission error. DRF permission denials have no ``code`` field.
+    if exc.response is not None:
+        try:
+            body = exc.response.json()
+        except ValueError:
+            body = None
+        if isinstance(body, dict):
+            for key in ("type", "platform", "platformError"):
+                if body.get(key) is not None:
+                    payload[key] = body[key]
     return Response(
-        {
-            "detail": exc.message,
-            "code": exc.code,
-            "status_code": exc.status_code,
-            "details": exc.details,
-        },
+        payload,
         status=exc.status_code
         if exc.status_code and 400 <= exc.status_code < 600
         else status.HTTP_502_BAD_GATEWAY,
@@ -469,6 +482,7 @@ class ZernioConversationViewSet(ZernioTenantMixin, viewsets.ReadOnlyModelViewSet
         summary = import_conversations_to_people(
             profile,
             create_missing=bool(request.data.get("create_missing", True)),
+            update_existing=bool(request.data.get("update_existing", True)),
             conversation_ids=conversation_ids,
             limit=limit,
             dry_run=bool(request.data.get("dry_run", False)),

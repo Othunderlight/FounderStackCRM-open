@@ -159,10 +159,55 @@ def link_conversation_to_person(
     return identity, person_created
 
 
+def _sync_existing_identity(conversation: ZernioConversation) -> bool:
+    """Refresh an existing identity/person from the conversation's current data.
+
+    Only the Person's name is updated when it looks derived from the old
+    identity values. A manually renamed person is left alone.
+    """
+    identity = conversation.identity
+    if identity is None:
+        return False
+
+    person = identity.person
+    old_display = _clean(identity.display_name)
+    old_username = _clean(identity.username)
+    new_display = _clean(conversation.participant_name)
+    new_username = _clean(conversation.participant_username)
+    changed = False
+    person_changed = False
+
+    if new_display and new_display != old_display:
+        identity.display_name = new_display
+        changed = True
+        if person and person.name in {old_display, old_username, None, ""}:
+            person.name = new_display
+            person_changed = True
+    if new_username and new_username != old_username:
+        identity.username = new_username
+        changed = True
+    if _clean(conversation.participant_avatar) and not identity.avatar:
+        identity.avatar = _clean(conversation.participant_avatar)
+        changed = True
+    if conversation.last_message_at and (
+        identity.last_seen_at is None
+        or conversation.last_message_at > identity.last_seen_at
+    ):
+        identity.last_seen_at = conversation.last_message_at
+        changed = True
+
+    if changed:
+        identity.save()
+    if person_changed:
+        person.save(update_fields=["name", "updated_at"])
+    return changed
+
+
 def import_conversations_to_people(
     profile,
     *,
     create_missing: bool = True,
+    update_existing: bool = True,
     conversation_ids: list[str] | None = None,
     limit: int | None = None,
     dry_run: bool = False,
@@ -180,6 +225,7 @@ def import_conversations_to_people(
         "total": 0,
         "linked": 0,
         "already_linked": 0,
+        "updated": 0,
         "created_people": 0,
         "skipped": 0,
         "errors": [],
@@ -191,6 +237,22 @@ def import_conversations_to_people(
             summary["total"] += 1
             if conversation.person_id and conversation.identity_id:
                 summary["already_linked"] += 1
+                if update_existing:
+                    try:
+                        with transaction.atomic():
+                            if _sync_existing_identity(conversation):
+                                summary["updated"] += 1
+                    except Exception as exc:  # noqa: BLE001
+                        logger.exception(
+                            "Failed to refresh identity for %s",
+                            conversation.conversation_id,
+                        )
+                        summary["errors"].append(
+                            {
+                                "conversation_id": conversation.conversation_id,
+                                "error": str(exc),
+                            }
+                        )
                 continue
             try:
                 with transaction.atomic():

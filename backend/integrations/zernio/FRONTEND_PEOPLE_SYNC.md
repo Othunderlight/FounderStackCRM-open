@@ -49,6 +49,7 @@ Content-Type: application/json
 
 {
   "create_missing": true,
+  "update_existing": true,
   "dry_run": false,
   "limit": null,
   "conversation_ids": null
@@ -58,6 +59,7 @@ Content-Type: application/json
 | Field | Type | Default | Notes |
 | --- | --- | --- | --- |
 | `create_missing` | boolean | `true` | Create a new `Person` when no match exists. |
+| `update_existing` | boolean | `true` | Refresh linked identities/people from the latest conversation data. |
 | `dry_run` | boolean | `false` | Counts what would happen and rolls back. |
 | `limit` | integer | `null` | Link at most N conversations. |
 | `conversation_ids` | string[] | `null` | Link only these conversation UUIDs. |
@@ -69,6 +71,7 @@ Content-Type: application/json
   "total": 739,
   "linked": 739,
   "already_linked": 0,
+  "updated": 0,
   "created_people": 739,
   "skipped": 0,
   "errors": [],
@@ -78,16 +81,18 @@ Content-Type: application/json
 ```
 
 The endpoint is idempotent. Re-running skips conversations that already have a
-person and returns them in `already_linked`.
+person and returns them in `already_linked`. With `update_existing: true`, it
+also repairs identities and person names that Zernio resolved after the first
+import, and reports them in `updated`.
 
 ### Suggested UI
 
 1. Button opens a confirmation dialog:
-   - "This will create a CRM person for every Instagram conversation that is not linked yet."
+   - "This will link CRM people to every conversation that is not linked yet."
    - Show a "Preview" action that calls the endpoint with `dry_run: true`.
-2. Show the preview counts: `total`, `linked`, `created_people`.
+2. Show the preview counts: `total`, `linked`, `created_people`, `updated`.
 3. Confirm calls the endpoint with `dry_run: false`.
-4. Show a toast: "Linked 739 conversations, created 739 people."
+4. Show a toast: "Linked 739 conversations, created 739 people, updated 4."
 5. Refresh the people list and the inbox.
 
 ### TypeScript
@@ -97,6 +102,7 @@ type ImportPeopleResult = {
   total: number;
   linked: number;
   already_linked: number;
+  updated: number;
   created_people: number;
   skipped: number;
   errors: { conversation_id: string; error: string }[];
@@ -106,6 +112,7 @@ type ImportPeopleResult = {
 
 export async function importConversationsToPeople(options?: {
   createMissing?: boolean;
+  updateExisting?: boolean;
   dryRun?: boolean;
   limit?: number;
   conversationIds?: string[];
@@ -116,6 +123,7 @@ export async function importConversationsToPeople(options?: {
       method: "POST",
       body: JSON.stringify({
         create_missing: options?.createMissing ?? true,
+        update_existing: options?.updateExisting ?? true,
         dry_run: options?.dryRun ?? false,
         limit: options?.limit ?? null,
         conversation_ids: options?.conversationIds ?? null,
@@ -389,30 +397,80 @@ curl -X POST http://localhost:8000/api/integrations/zernio/conversations/import-
 curl -X POST http://localhost:8000/api/integrations/zernio/conversations/import-people/ \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{"create_missing": true}'
+  -d '{"create_missing": true, "update_existing": true}'
+
+# Merge messages stored under both the Zernio internal id and platform id
+python manage.py zernio_dedupe_messages --dry-run
+python manage.py zernio_dedupe_messages
 ```
 
 ---
 
-## 9. Email to the frontend team
+## 9. Answers to the frontend questions
+
+**1. Does `POST /conversations/{id}/messages/` update `last_message_text`,
+`last_message_at`, and `unread_count` synchronously?**
+
+`last_message_text` and `last_message_at` are updated synchronously when the
+provider accepts the send. `unread_count` is not changed for an outgoing
+message. The response returns the new message, not the conversation, so an
+optimistic update is fine; refresh the conversation list when the view regains
+focus or after the `message.sent` webhook lands.
+
+**2. Is it intentional that `people.read` alone exposes conversation content?**
+
+No. This was a gap and is fixed. `GET /api/people/{id}/timeline/` now requires
+`people.read`, but message items additionally require `agent.use`:
+
+- `source=all` without `agent.use`: returns activities only.
+- `source=messages` without `agent.use`: returns `403` with
+  `code: "messages_permission_denied"`.
+- `source=activities`: always allowed with `people.read`.
+
+Conversation list and message endpoints continue to require `agent.use`.
+
+**3. How do we get the number of unlinked conversations efficiently?**
+
+Use the list endpoint and read `count`:
+
+```ts
+GET /api/integrations/zernio/conversations/?linked=false&limit=1
+```
+
+The `count` is computed on the filtered queryset, so `limit=1` keeps the payload
+small. `?linked=true` returns the linked count.
+
+**4. What happens to `GET messages` when the account needs reconnect or the
+token is invalid?**
+
+The endpoint attempts to refresh from Zernio, catches provider errors, and
+still returns the local mirror. It logs a warning. To skip the provider call
+entirely use `?refresh=false`. Sending a message will still fail with the
+provider's error until the account is reconnected. The account payload exposes
+`needs_reconnect`, `token_valid`, and `status` so the UI can prompt a reconnect.
+
+---
+
+## 10. Email to the frontend team
 
 > **Subject: Zernio → CRM people sync is ready**
 >
 > Hi team,
 >
-> The backend now links Zernio conversations to CRM people. Here is what you
-> need to build.
+> The backend now links Zernio conversations to CRM people, and we fixed the
+> message duplication and name-sync issues. Here is what you need to build.
 >
 > **1. New manual import button**
 >
 > Endpoint: `POST /api/integrations/zernio/conversations/import-people/`
 >
-> Body: `{ "create_missing": true, "dry_run": false }`
+> Body: `{ "create_missing": true, "update_existing": true, "dry_run": false }`
 >
 > It links every unlinked conversation to a person and creates people when
-> missing. It is idempotent. Call it once with `dry_run: true` to preview
-> counts, then again with `dry_run: false` to apply. Show the returned
-> `total`, `linked`, and `created_people` in a toast.
+> missing. It is idempotent. `update_existing: true` also repairs names that
+> Zernio resolved after the first import. Call it once with `dry_run: true` to
+> preview counts, then again with `dry_run: false` to apply. Show `total`,
+> `linked`, `created_people`, and `updated` in a toast.
 >
 > **2. Person payload**
 >
@@ -425,7 +483,9 @@ curl -X POST http://localhost:8000/api/integrations/zernio/conversations/import-
 > `GET /api/integrations/zernio/conversations/?person={personId}`.
 > Load messages with
 > `GET /api/integrations/zernio/conversations/{conversationId}/messages/`.
-> Messages are chronological and refresh from Zernio by default.
+> Messages are chronological and refresh from Zernio by default. Add
+> `?refresh=false` to read the local mirror only (useful when the account needs
+> reconnect).
 >
 > **4. Activity log widget**
 >
@@ -434,11 +494,30 @@ curl -X POST http://localhost:8000/api/integrations/zernio/conversations/import-
 > chat messages, use `GET /api/people/{id}/timeline/`. Both item kinds share
 > the same shape; use `kind` to choose the renderer.
 >
-> **5. No duplication**
+> Message items in the timeline require `agent.use` in addition to
+> `people.read`. Without `agent.use`, `source=all` returns activities only and
+> `source=messages` returns `403` with `code: "messages_permission_denied"`.
+>
+> **5. Unlinked count**
+>
+> `GET /api/integrations/zernio/conversations/?linked=false&limit=1` returns the
+> number of unlinked conversations in `count`. Use `linked=true` for the linked
+> count.
+>
+> **6. Sending messages**
+>
+> `POST /conversations/{id}/messages/` returns provider errors with a structured
+> body. A `403` with `code: "platform_api_error"` is usually a Meta restriction,
+> such as the 24-hour reply window. Show `detail` to the user; do not treat it as
+> an expired session. The body also includes `platform` and `platformError`.
+>
+> **7. No duplication**
 >
 > Messages are not copied into `ActivityLog`. The timeline endpoint reads them
 > from the linked conversations. The activity log stays for calls, meetings,
-> and manual notes.
+> and manual notes. Duplicate chat messages created by the old webhook/API id
+> mismatch were merged; new messages are deduplicated on the platform message
+> id.
 >
 > Full request/response shapes and TypeScript examples are in
 > `backend/integrations/zernio/FRONTEND_PEOPLE_SYNC.md`.

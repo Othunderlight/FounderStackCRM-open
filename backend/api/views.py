@@ -1274,6 +1274,9 @@ class PersonViewSet(TenantMixin, BulkImportMixin, BaseViewSet):
     queryset = Person.objects.all()
     serializer_class = PersonSerializer
     permission_resource = "people"
+    required_permissions = {
+        "timeline": "people.read",
+    }
 
     def get_queryset(self):
         return super().get_queryset().prefetch_related("identities")
@@ -1499,6 +1502,23 @@ class PersonViewSet(TenantMixin, BulkImportMixin, BaseViewSet):
 
         items = []
 
+        # Conversation message text is more sensitive than the activity log.
+        # ``people.read`` is enough for activities, but reading messages also
+        # requires ``agent.use``. Without it, ``source=all`` degrades to
+        # activities only and ``source=messages`` is rejected.
+        has_agent_access = request.user.has_org_permission("agent.use")
+        if source == "messages" and not has_agent_access:
+            return Response(
+                {
+                    "detail": (
+                        "You do not have permission to view conversation "
+                        "messages in this organization."
+                    ),
+                    "code": "messages_permission_denied",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         if source in {"all", "activities"}:
             activities = ActivityLog.objects.filter(
                 organization=org, related_person=person
@@ -1537,7 +1557,7 @@ class PersonViewSet(TenantMixin, BulkImportMixin, BaseViewSet):
                     }
                 )
 
-        if source in {"all", "messages"}:
+        if source in {"all", "messages"} and has_agent_access:
             conversations = ZernioConversation.objects.filter(
                 organization=org, person=person
             )
