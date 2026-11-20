@@ -225,6 +225,16 @@ To disconnect: `DELETE /accounts/{id}/`.
 
 ## 5. Inbox / DMs
 
+### Conversation model (read this first)
+
+One conversation row = one thread with one participant. The inbox list is a list of threads, not a list of messages.
+
+- The list shows `last_message_text` / `last_message_at` as the preview. These are updated in place when a new message arrives; the backend does not create a second row for the same thread.
+- Messages are loaded when the user opens a thread: `GET /conversations/{id}/messages/`.
+- `conversation_id` is the id the Zernio inbox API expects. For Instagram it is the platform conversation id (for example `1724801239213945`). Webhooks expose the same id as `platformConversationId`; the backend maps both to one row.
+- `GET /conversations/{id}/messages/` refreshes from Zernio by default and then returns the mirrored messages. Add `?refresh=false` to read only the local mirror.
+- Opening a thread for the first time may fetch messages from Zernio. If the provider call fails, the endpoint still returns whatever is already mirrored and logs a warning.
+
 ### Sync conversations
 
 ```ts
@@ -277,7 +287,7 @@ const res = await apiFetch(
 const { results } = await res.json();
 ```
 
-`GET` returns paginated messages in chronological order. Message shape:
+`GET` returns paginated messages in chronological order. It refreshes from Zernio first unless you pass `?refresh=false`. Use `?sync_limit=50` to cap the refresh (1–100). Message shape:
 
 ```json
 {
@@ -562,7 +572,7 @@ All paths below are relative to `/api/integrations/zernio/`.
 
 ---
 
-## 12. Verification status (backend, Nov 19 2026)
+## 12. Verification status (backend, Nov 20 2026)
 
 Already verified:
 
@@ -571,13 +581,34 @@ Already verified:
 - Replaying the same event id returns `200 {"ok": true, "duplicate": true}`.
 - A real Zernio `message.sent` webhook was received and processed.
 - Events are persisted in `ZernioWebhookEvent` with status `processed`.
+- Instagram conversations are deduplicated: list rows and webhooks now share one id per thread. Duplicate rows for the same participant were merged.
+- Opening a conversation loads its messages from Zernio. The `accountId` requirement is now sent, so the refresh succeeds.
+- 15 existing integration tests pass.
 
-Local webhook test (repeatable):
+Local webhook test (repeatable, committed management command):
 
 ```bash
 cd backend
-.venv/bin/python /tmp/opencode/zernio_webhook_test.py
+source .venv/bin/activate
+export DJANGO_DEBUG=True
+
+# Local dev server
+python manage.py zernio_webhook_smoke --replay --cleanup
+
+# Through the ngrok tunnel
+python manage.py zernio_webhook_smoke \
+  --url https://secure-marmot-poorly.ngrok-free.app/api/integrations/zernio/webhook/ \
+  --replay --cleanup
 ```
+
+Expected output:
+
+```text
+delivery: HTTP 200 {"ok":true}
+replay: HTTP 200 {"ok":true,"duplicate":true}
+```
+
+The command signs a realistic `message.received` payload with `ZERNIO_WEBHOOK_SECRET` and posts it. Add `--cleanup` to remove the generated `Smoke Test` conversation and event afterwards.
 
 Or with curl, where `$SECRET` is `ZERNIO_WEBHOOK_SECRET` and `$BODY` is the compact JSON:
 

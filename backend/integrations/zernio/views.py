@@ -8,7 +8,7 @@ from datetime import date
 
 from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db.models import Q
+from django.db.models import OuterRef, Q, Subquery
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -18,6 +18,7 @@ from integrations.models import (
     ZernioAccount,
     ZernioConversation,
     ZernioDailyMetric,
+    ZernioMessage,
     ZernioPost,
     ZernioProfile,
     ZernioWebhookEvent,
@@ -366,7 +367,49 @@ class ZernioConversationViewSet(ZernioTenantMixin, viewsets.ReadOnlyModelViewSet
                 | Q(participant_username__icontains=search)
                 | Q(last_message_text__icontains=search)
             )
-        return queryset
+        latest_message = (
+            ZernioMessage.objects.filter(conversation=OuterRef("pk"))
+            .order_by("-sent_at", "-created_at")
+            .values("id")[:1]
+        )
+        return queryset.annotate(latest_message_id=Subquery(latest_message))
+
+    @staticmethod
+    def _attach_latest_messages(conversations):
+        """Attach the latest message to each row in one query."""
+        rows = list(conversations)
+        message_ids = [
+            row.latest_message_id
+            for row in rows
+            if getattr(row, "latest_message_id", None)
+        ]
+        if not message_ids:
+            return rows
+        messages = {
+            message.id: message
+            for message in ZernioMessage.objects.filter(id__in=message_ids)
+        }
+        for row in rows:
+            message_id = getattr(row, "latest_message_id", None)
+            row.prefetched_messages = [messages[message_id]] if message_id in messages else []
+        return rows
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            page = self._attach_latest_messages(page)
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        rows = self._attach_latest_messages(queryset)
+        serializer = self.get_serializer(rows, many=True)
+        return Response(serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self._attach_latest_messages([instance])
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
     @action(detail=False, methods=["post"], url_path="sync")
     def sync(self, request):

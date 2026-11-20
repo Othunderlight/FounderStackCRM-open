@@ -262,6 +262,17 @@ Set `ZERNIO_API_KEY`, `ZERNIO_API_BASE_URL`, and `ZERNIO_WEBHOOK_SECRET` in
 inbox mirror. An Inngest cron (`zernio_sync_all`, hourly) refreshes accounts,
 conversations, and analytics.
 
+Verify the webhook receiver with a signed test event:
+
+```bash
+python manage.py zernio_webhook_smoke --replay --cleanup
+python manage.py zernio_webhook_smoke --url https://<tunnel>/api/integrations/zernio/webhook/ --replay --cleanup
+```
+
+Expected: `delivery: HTTP 200 {"ok":true}` and `replay: HTTP 200 {"ok":true,"duplicate":true}`.
+
+Frontend integration guide: `integrations/zernio/FRONTEND_INTEGRATION.md`.
+
 ### Dashboard
 
 | Endpoint | Methods | Description |
