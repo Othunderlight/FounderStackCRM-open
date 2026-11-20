@@ -303,6 +303,23 @@ def disconnect_account(
 # ---------------------------------------------------------------------------
 # Inbox
 # ---------------------------------------------------------------------------
+def _conversation_identity(payload: dict, platform: str | None = None) -> str | None:
+    """Return the id the inbox API expects for a conversation.
+
+    List rows expose the API id as ``id``. Webhooks expose Zernio's internal id
+    as ``id`` and the API id as ``platformConversationId``. WhatsApp is the one
+    documented exception: its API id is the internal id.
+    """
+    platform_id = _first(payload, "platformConversationId")
+    internal_id = _first(payload, "id", "conversationId", "_id")
+    resolved_platform = platform or _first(payload, "platform")
+    if str(resolved_platform).lower() == "whatsapp":
+        chosen = internal_id or platform_id
+    else:
+        chosen = platform_id or internal_id
+    return str(chosen) if chosen else None
+
+
 def _ensure_conversation(
     profile: ZernioProfile,
     payload: dict,
@@ -313,7 +330,8 @@ def _ensure_conversation(
     last_message: str | None = None,
     last_message_at: Any = None,
 ) -> ZernioConversation | None:
-    conversation_id = _first(payload, "id", "conversationId", "_id")
+    remote_platform = platform or _first(payload, "platform")
+    conversation_id = _conversation_identity(payload, remote_platform)
     if not conversation_id:
         return None
 
@@ -329,12 +347,23 @@ def _ensure_conversation(
         participant = {}
 
     existing = ZernioConversation.objects.filter(
-        conversation_id=str(conversation_id)
+        conversation_id=conversation_id
     ).first()
+    if existing is None:
+        # Self-heal rows created before webhook ids were canonicalized.
+        existing = (
+            ZernioConversation.objects.filter(
+                profile=profile,
+                metadata__platformConversationId=conversation_id,
+            )
+            .exclude(conversation_id=conversation_id)
+            .first()
+        )
 
     values: dict[str, Any] = {
         "organization": profile.organization,
         "profile": profile,
+        "conversation_id": conversation_id,
         "last_synced_at": timezone.now(),
         "metadata": {**(existing.metadata if existing else {}), **payload},
     }
@@ -344,7 +373,6 @@ def _ensure_conversation(
     elif existing is None:
         values["account"] = None
 
-    remote_platform = platform or _first(payload, "platform")
     if remote_platform:
         values["platform"] = remote_platform
 
@@ -397,9 +425,7 @@ def _ensure_conversation(
         existing.save()
         return existing
 
-    return ZernioConversation.objects.create(
-        conversation_id=str(conversation_id), **values
-    )
+    return ZernioConversation.objects.create(**values)
 
 
 def _apply_message(
@@ -553,7 +579,16 @@ def sync_conversation_messages(
     limit: int | None = None,
 ) -> list[ZernioMessage]:
     client = client or get_zernio_client()
-    params = {"limit": limit} if limit else {}
+    account_id = (
+        conversation.account.account_id
+        if conversation.account
+        else conversation.metadata.get("accountId")
+    )
+    params: dict[str, Any] = {}
+    if account_id:
+        params["accountId"] = account_id
+    if limit:
+        params["limit"] = limit
     response = client.get_inbox_conversation_messages(
         conversation.conversation_id, **params
     )

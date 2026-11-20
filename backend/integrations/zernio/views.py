@@ -391,6 +391,28 @@ class ZernioConversationViewSet(ZernioTenantMixin, viewsets.ReadOnlyModelViewSet
         conversation = self.get_object()
 
         if request.method.lower() == "get":
+            refresh = request.query_params.get("refresh", "true").lower() not in {
+                "0",
+                "false",
+                "no",
+            }
+            if refresh:
+                try:
+                    sync_limit = int(request.query_params.get("sync_limit", 50))
+                except (TypeError, ValueError):
+                    sync_limit = 50
+                try:
+                    sync_conversation_messages(
+                        conversation,
+                        limit=max(1, min(sync_limit, 100)),
+                    )
+                except ZernioAPIError as exc:
+                    # Still return whatever is already mirrored.
+                    logger.warning(
+                        "Failed to refresh messages for conversation %s: %s",
+                        conversation.conversation_id,
+                        exc.message,
+                    )
             queryset = conversation.messages.all().order_by("sent_at", "created_at")
             page = self.paginate_queryset(queryset)
             if page is not None:
