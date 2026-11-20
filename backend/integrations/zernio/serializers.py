@@ -101,6 +101,7 @@ class ZernioMessageSerializer(serializers.ModelSerializer):
 class ZernioConversationSerializer(serializers.ModelSerializer):
     account = ZernioAccountSerializer(read_only=True)
     last_message = serializers.SerializerMethodField()
+    person_name = serializers.CharField(source="person.name", read_only=True, default=None)
 
     class Meta:
         model = ZernioConversation
@@ -108,6 +109,9 @@ class ZernioConversationSerializer(serializers.ModelSerializer):
             "id",
             "profile",
             "account",
+            "person",
+            "identity",
+            "person_name",
             "conversation_id",
             "platform",
             "participant_id",

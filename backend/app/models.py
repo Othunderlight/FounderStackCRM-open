@@ -184,6 +184,60 @@ class Person(TenantModel):
         return self.name
 
 
+class PersonIdentity(TenantModel):
+    """A platform handle that belongs to a Person.
+
+    One person can have several identities (Instagram, WhatsApp, email, ...).
+    The identity is the matching key between an external conversation and a CRM
+    contact, so the Person model stays free of platform-specific columns.
+    """
+
+    person = models.ForeignKey(
+        Person,
+        on_delete=models.CASCADE,
+        related_name="identities",
+    )
+    platform = models.CharField(max_length=50, db_index=True)
+    external_id = models.CharField(max_length=255, db_index=True)
+    username = models.CharField(max_length=255, blank=True, null=True)
+    display_name = models.CharField(max_length=255, blank=True, null=True)
+    avatar = models.URLField(max_length=500, blank=True, null=True)
+    account = models.ForeignKey(
+        "integrations.ZernioAccount",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="person_identities",
+    )
+    metadata = models.JSONField(default=dict, blank=True)
+    last_seen_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Person Identity"
+        verbose_name_plural = "Person Identities"
+        ordering = ["-last_seen_at", "-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "platform", "account", "external_id"],
+                condition=models.Q(account__isnull=False),
+                name="uniq_person_identity_account",
+            ),
+            models.UniqueConstraint(
+                fields=["organization", "platform", "external_id"],
+                condition=models.Q(account__isnull=True),
+                name="uniq_person_identity_no_account",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["organization", "platform", "external_id"]),
+            models.Index(fields=["person", "platform"]),
+        ]
+
+    def __str__(self):
+        handle = self.username or self.external_id
+        return f"{self.platform}:{handle}"
+
+
 class Opportunity(TenantModel):
     # Removed strict choices to allow flexibility if needed,
     # though frontend types currently show strict union.
@@ -360,6 +414,14 @@ class ActivityLog(TenantModel):
         related_name="activities",
         null=True,
         blank=True,
+    )
+    conversation = models.ForeignKey(
+        "integrations.ZernioConversation",
+        on_delete=models.SET_NULL,
+        related_name="activities",
+        null=True,
+        blank=True,
+        help_text="Linked Zernio conversation when the activity came from a chat",
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

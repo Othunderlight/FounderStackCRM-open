@@ -261,8 +261,8 @@ Conversation shape:
 
 ```json
 {
-  "id": 11,
-  "profile": 1,
+  "id": "1af0fcc9-1083-4061-9c1e-0b8930ff986b",
+  "profile": "…",
   "account": { "...": "nested ZernioAccount" },
   "conversation_id": "6aff123fc03e927f9bc82466",
   "platform": "instagram",
@@ -291,8 +291,8 @@ const { results } = await res.json();
 
 ```json
 {
-  "id": 42,
-  "conversation": 11,
+  "id": "65f699d7-50ac-4171-a078-e868c86016b7",
+  "conversation": "1af0fcc9-1083-4061-9c1e-0b8930ff986b",
   "message_id": "6aff16960413d9a678f8a578",
   "direction": "incoming",
   "text": "Hi, is this still available?",
@@ -671,9 +671,9 @@ export const zernioApi = {
   },
   conversations: (query = "") =>
     zernio<{ results: ZernioConversation[] }>(`/conversations/${query}`),
-  messages: (id: number) =>
+  messages: (id: string) =>
     zernio<{ results: ZernioMessage[] }>(`/conversations/${id}/messages/`),
-  sendMessage: (id: number, message: string, idempotencyKey: string) =>
+  sendMessage: (id: string, message: string, idempotencyKey: string) =>
     zernio<ZernioMessage>(`/conversations/${id}/messages/`, {
       method: "POST",
       body: JSON.stringify({ message, idempotency_key: idempotencyKey }),
@@ -690,3 +690,22 @@ export const zernioApi = {
     }),
 };
 ```
+
+---
+
+## 14. People sync and merged timeline
+
+The conversation → person linking, the manual import button, and the merged
+activity/message timeline are documented separately:
+
+**`backend/integrations/zernio/FRONTEND_PEOPLE_SYNC.md`**
+
+Quick summary:
+
+- `POST /api/integrations/zernio/conversations/import-people/` links
+  conversations to people (idempotent, supports `dry_run`).
+- `GET /api/people/{id}/` now returns `identities[]`.
+- `GET /api/integrations/zernio/conversations/?person={id}` lists a person's
+  threads.
+- `GET /api/people/{id}/timeline/` merges `ActivityLog` rows and Zernio
+  messages. Messages are not copied into `ActivityLog`.

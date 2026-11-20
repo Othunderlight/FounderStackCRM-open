@@ -329,6 +329,21 @@ class ZernioConversation(TenantModel):
         blank=True,
     )
     conversation_id = models.CharField(max_length=128, unique=True, db_index=True)
+    person = models.ForeignKey(
+        "app.Person",
+        on_delete=models.SET_NULL,
+        related_name="zernio_conversations",
+        null=True,
+        blank=True,
+        db_index=True,
+    )
+    identity = models.ForeignKey(
+        "app.PersonIdentity",
+        on_delete=models.SET_NULL,
+        related_name="conversations",
+        null=True,
+        blank=True,
+    )
     platform = models.CharField(max_length=50, blank=True, null=True, db_index=True)
     participant_id = models.CharField(max_length=255, blank=True, null=True)
     participant_name = models.CharField(max_length=255, blank=True, null=True)

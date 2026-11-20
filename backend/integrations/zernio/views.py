@@ -27,6 +27,7 @@ from integrations.permissions import HasAPIKeyScope
 from users.permissions import HasOrgPermission
 
 from .client import ZernioAPIError, get_zernio_client
+from .people import import_conversations_to_people
 from .serializers import (
     ZernioAccountSerializer,
     ZernioConnectSerializer,
@@ -344,6 +345,7 @@ class ZernioConversationViewSet(ZernioTenantMixin, viewsets.ReadOnlyModelViewSet
         "backfill": "agent.use",
         "read": "agent.use",
         "typing": "agent.use",
+        "import_people": "people.write",
     }
 
     def get_queryset(self):
@@ -355,6 +357,12 @@ class ZernioConversationViewSet(ZernioTenantMixin, viewsets.ReadOnlyModelViewSet
             queryset = queryset.filter(platform=params["platform"])
         if params.get("account"):
             queryset = queryset.filter(account_id=params["account"])
+        if params.get("person"):
+            queryset = queryset.filter(person_id=params["person"])
+        if params.get("linked") in {"true", "false"}:
+            queryset = queryset.filter(
+                person__isnull=params["linked"] == "false"
+            )
         if params.get("unread") in {"true", "false"}:
             if params["unread"] == "true":
                 queryset = queryset.filter(unread_count__gt=0)
@@ -428,6 +436,44 @@ class ZernioConversationViewSet(ZernioTenantMixin, viewsets.ReadOnlyModelViewSet
                 "results": self.get_serializer(conversations, many=True).data,
             }
         )
+
+    @action(detail=False, methods=["post"], url_path="import-people")
+    def import_people(self, request):
+        """Manually link conversations to CRM people.
+
+        Creates a Person and PersonIdentity for participants that are not
+        linked yet. Re-running is safe: already-linked conversations are
+        skipped.
+        """
+        try:
+            profile = _profile_for_user(request.user, create=True)
+        except ZernioAPIError as exc:
+            return _error_response(exc)
+
+        conversation_ids = request.data.get("conversation_ids") or None
+        if conversation_ids and not isinstance(conversation_ids, list):
+            return Response(
+                {"detail": "conversation_ids must be a list of UUIDs."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        limit = request.data.get("limit")
+        try:
+            limit = int(limit) if limit else None
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "limit must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        summary = import_conversations_to_people(
+            profile,
+            create_missing=bool(request.data.get("create_missing", True)),
+            conversation_ids=conversation_ids,
+            limit=limit,
+            dry_run=bool(request.data.get("dry_run", False)),
+        )
+        return Response(summary)
 
     @action(detail=True, methods=["get", "post"], url_path="messages")
     def messages(self, request, pk=None):

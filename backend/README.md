@@ -237,7 +237,7 @@ Cookie-based via `dj-rest-auth` with custom tokens (`cccrm-access-token`, `cccrm
 | `/api/integrations/tenant-backup-config/` | CRUD | GitHub backup config |
 | `/api/integrations/zernio/profiles/` | CRUD + ensure/sync | One Zernio profile per organization |
 | `/api/integrations/zernio/accounts/` | List/detail/delete + sync/health | Connected social/messaging accounts |
-| `/api/integrations/zernio/conversations/` | List/detail + sync/messages/read | Inbox and DM threads |
+| `/api/integrations/zernio/conversations/` | List/detail + sync/messages/read/import-people | Inbox and DM threads |
 | `/api/integrations/zernio/posts/` | List/detail + publish/sync | Publishing and post analytics |
 | `/api/integrations/zernio/analytics/` | Dashboard/daily/followers/delta | Per-customer analytics |
 | `/api/integrations/zernio/oauth-apps/` | CRUD + test | White-label platform apps |
@@ -272,6 +272,18 @@ python manage.py zernio_webhook_smoke --url https://<tunnel>/api/integrations/ze
 Expected: `delivery: HTTP 200 {"ok":true}` and `replay: HTTP 200 {"ok":true,"duplicate":true}`.
 
 Frontend integration guide: `integrations/zernio/FRONTEND_INTEGRATION.md`.
+People-sync and timeline guide: `integrations/zernio/FRONTEND_PEOPLE_SYNC.md`.
+
+### Zernio → CRM people
+
+`POST /api/integrations/zernio/conversations/import-people/` links unlinked
+conversations to CRM people. It creates a `Person` and `PersonIdentity` when no
+match exists. It is idempotent and supports `dry_run`, `limit`, and
+`conversation_ids`.
+
+`GET /api/people/{id}/timeline/` returns a merged, newest-first timeline of
+`ActivityLog` rows and Zernio messages. Messages are read from the linked
+conversations and are not copied into `ActivityLog`.
 
 ### Dashboard
 

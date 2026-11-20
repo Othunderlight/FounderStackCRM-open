@@ -8,6 +8,7 @@ from .models import (
     Note,
     Opportunity,
     Person,
+    PersonIdentity,
     Report,
     SyncLog,
     SyncRecord,
@@ -65,6 +66,22 @@ class PersonAdmin(IDDisplayMixin, admin.ModelAdmin):
     search_fields = ("name", "email")
 
 
+@admin.register(PersonIdentity)
+class PersonIdentityAdmin(IDDisplayMixin, admin.ModelAdmin):
+    list_display = (
+        "platform",
+        "external_id",
+        "username",
+        "person",
+        "account",
+        "organization",
+        "last_seen_at",
+    )
+    list_filter = ("organization", "platform")
+    search_fields = ("external_id", "username", "display_name", "person__name")
+    raw_id_fields = ("person", "account")
+
+
 @admin.register(Opportunity)
 class OpportunityAdmin(IDDisplayMixin, admin.ModelAdmin):
     list_display = (
@@ -109,9 +126,11 @@ class ActivityLogAdmin(IDDisplayMixin, admin.ModelAdmin):
         "direction",
         "title",
         "date",
+        "conversation",
         "user",
     )
     list_filter = ("organization", "type", "channel", "direction")
+    raw_id_fields = ("conversation",)
 
 
 @admin.register(CustomView)

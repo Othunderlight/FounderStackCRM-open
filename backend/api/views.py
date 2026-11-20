@@ -23,7 +23,7 @@ from django.db import models
 from django.db.models import Case, IntegerField, Q, Value, When
 from django_filters import CharFilter, FilterSet
 from django_filters.rest_framework import DjangoFilterBackend
-from integrations.models import File
+from integrations.models import File, ZernioConversation, ZernioMessage
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -1274,6 +1274,9 @@ class PersonViewSet(TenantMixin, BulkImportMixin, BaseViewSet):
     queryset = Person.objects.all()
     serializer_class = PersonSerializer
     permission_resource = "people"
+
+    def get_queryset(self):
+        return super().get_queryset().prefetch_related("identities")
     filter_backends = [
         FuzzySearchFilter,
         filters.OrderingFilter,
@@ -1469,6 +1472,121 @@ class PersonViewSet(TenantMixin, BulkImportMixin, BaseViewSet):
             response_data["notes"] = notes_data if notes_data else None
 
         return Response(response_data)
+
+    @action(detail=True, methods=["get"])
+    def timeline(self, request, pk=None):
+        """Merged activity + Zernio message timeline for one person.
+
+        Activities stay in ActivityLog. Messages are read from the linked
+        Zernio conversations, so nothing is duplicated.
+        """
+        person = self.get_object()
+        org = request.user.organization
+        source = request.query_params.get("source", "all")
+        conversation_id = request.query_params.get("conversation")
+
+        try:
+            limit = int(request.query_params.get("limit", 50))
+        except (TypeError, ValueError):
+            limit = 50
+        limit = max(1, min(limit, 200))
+
+        try:
+            offset = int(request.query_params.get("offset", 0))
+        except (TypeError, ValueError):
+            offset = 0
+        offset = max(0, offset)
+
+        items = []
+
+        if source in {"all", "activities"}:
+            activities = ActivityLog.objects.filter(
+                organization=org, related_person=person
+            ).select_related("conversation")
+            if conversation_id:
+                activities = activities.filter(conversation_id=conversation_id)
+            for activity in activities:
+                items.append(
+                    {
+                        "kind": "activity",
+                        "id": str(activity.id),
+                        "type": activity.type,
+                        "channel": activity.channel,
+                        "direction": activity.direction,
+                        "title": activity.title,
+                        "content": activity.content,
+                        "date": activity.date.isoformat() if activity.date else None,
+                        "conversation": (
+                            str(activity.conversation_id)
+                            if activity.conversation_id
+                            else None
+                        ),
+                        "conversation_id": (
+                            activity.conversation.conversation_id
+                            if activity.conversation_id
+                            else None
+                        ),
+                        "platform": (
+                            activity.conversation.platform
+                            if activity.conversation_id
+                            else None
+                        ),
+                        "message_id": None,
+                        "status": None,
+                        "attachments": [],
+                    }
+                )
+
+        if source in {"all", "messages"}:
+            conversations = ZernioConversation.objects.filter(
+                organization=org, person=person
+            )
+            if conversation_id:
+                conversations = conversations.filter(id=conversation_id)
+            messages = ZernioMessage.objects.filter(
+                conversation__in=conversations
+            ).select_related("conversation")
+            for message in messages:
+                items.append(
+                    {
+                        "kind": "message",
+                        "id": str(message.id),
+                        "type": "msg",
+                        "channel": message.conversation.platform,
+                        "direction": (
+                            "sent"
+                            if message.direction == ZernioMessage.Direction.OUTGOING
+                            else "received"
+                        ),
+                        "title": None,
+                        "content": message.text,
+                        "date": (
+                            message.sent_at.isoformat()
+                            if message.sent_at
+                            else message.created_at.isoformat()
+                        ),
+                        "conversation": str(message.conversation_id),
+                        "conversation_id": message.conversation.conversation_id,
+                        "platform": message.conversation.platform,
+                        "message_id": message.message_id,
+                        "status": message.status,
+                        "attachments": message.attachments,
+                    }
+                )
+
+        items.sort(key=lambda item: item["date"] or "", reverse=True)
+        total = len(items)
+        page = items[offset : offset + limit]
+        return Response(
+            {
+                "count": total,
+                "offset": offset,
+                "limit": limit,
+                "next": offset + limit if offset + limit < total else None,
+                "previous": max(0, offset - limit) if offset > 0 else None,
+                "results": page,
+            }
+        )
 
     @action(detail=True, methods=["get"])
     def export(self, request, pk=None):

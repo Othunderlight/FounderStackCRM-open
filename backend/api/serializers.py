@@ -6,6 +6,7 @@ from app.models import (
     Note,
     Opportunity,
     Person,
+    PersonIdentity,
     Report,
     SyncLog,
     SyncRecord,
@@ -251,6 +252,26 @@ class CompanySerializer(RoleAwareFieldsMixin, serializers.ModelSerializer):
         return name or obj.owner.username
 
 
+class PersonIdentitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PersonIdentity
+        fields = [
+            "id",
+            "person",
+            "platform",
+            "external_id",
+            "username",
+            "display_name",
+            "avatar",
+            "account",
+            "metadata",
+            "last_seen_at",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+
 class PersonSerializer(RoleAwareFieldsMixin, serializers.ModelSerializer):
     hidden_field_entity = "person"
     hidden_field_aliases = {
@@ -262,6 +283,7 @@ class PersonSerializer(RoleAwareFieldsMixin, serializers.ModelSerializer):
     created_by_name = serializers.SerializerMethodField()
     owner_details = UserSerializer(source="owner", read_only=True)
     owner_name = serializers.SerializerMethodField()
+    identities = PersonIdentitySerializer(many=True, read_only=True)
 
     class Meta:
         model = Person
@@ -287,6 +309,7 @@ class PersonSerializer(RoleAwareFieldsMixin, serializers.ModelSerializer):
             "owner_details",
             "owner_name",
             "created_by_name",
+            "identities",
             "created_at",
             "updated_at",
             "organization",
@@ -578,7 +601,16 @@ class PersonContextSerializer(RoleAwareFieldsMixin, serializers.ModelSerializer)
 class ActivityLogContextSerializer(serializers.ModelSerializer):
     class Meta:
         model = ActivityLog
-        fields = ["id", "type", "channel", "direction", "title", "content", "date"]
+        fields = [
+            "id",
+            "type",
+            "channel",
+            "direction",
+            "title",
+            "content",
+            "date",
+            "conversation",
+        ]
 
 
 class TaskContextSerializer(serializers.ModelSerializer):
