@@ -156,7 +156,7 @@ export const listZernioAccounts = async (params?: {
   needsReconnect?: boolean;
   platform?: string;
 }): Promise<ZernioAccount[]> => {
-  const query = new URLSearchParams();
+  const query = new URLSearchParams({ limit: "100" });
   if (params?.active !== undefined) {
     query.set("active", String(params.active));
   }
@@ -167,10 +167,9 @@ export const listZernioAccounts = async (params?: {
     query.set("platform", params.platform);
   }
 
-  const suffix = query.size > 0 ? `?${query.toString()}` : "";
   const payload = await request<
     ZernioAccount[] | ZernioPaginated<ZernioAccount>
-  >(`/accounts/${suffix}`);
+  >(`/accounts/?${query.toString()}`);
   return unwrapList(payload);
 };
 

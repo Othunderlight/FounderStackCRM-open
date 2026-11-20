@@ -59,7 +59,6 @@ import {
   AtSign,
   Facebook,
   Gamepad2,
-  Ghost,
   Instagram,
   Loader2,
   Music2,
@@ -70,7 +69,6 @@ import {
   WifiOff,
   Youtube,
   Twitter,
-  Cloud,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -110,6 +108,7 @@ import {
   disconnectZernioAccount,
 } from "../lib/zernio";
 import type { ZernioAccount, ZernioProfile } from "../lib/zernio";
+import { MessageCircle } from 'lucide-react';
 
 type RoleSummary = {
   id: string;
@@ -1390,6 +1389,7 @@ const ExperienceView = () => {
 };
 
 const ZERNIO_PENDING_KEY = "zernio:connect:pending";
+const ZERNIO_PENDING_TTL_MS = 20 * 60 * 1000;
 
 const ZERNIO_PLATFORMS: {
   id: string;
@@ -1420,7 +1420,7 @@ const ZERNIO_PLATFORMS: {
     bg: "bg-sky-500/10",
   },
   {
-    id: "x",
+    id: "twitter",
     label: "X",
     icon: Twitter,
     color: "text-textPrimary",
@@ -1469,13 +1469,6 @@ const ZERNIO_PLATFORMS: {
     bg: "bg-indigo-500/10",
   },
   {
-    id: "bluesky",
-    label: "Bluesky",
-    icon: Cloud,
-    color: "text-sky-500",
-    bg: "bg-sky-500/10",
-  },
-  {
     id: "slack",
     label: "Slack",
     icon: Slack,
@@ -1489,13 +1482,6 @@ const ZERNIO_PLATFORMS: {
     color: "text-amber-500",
     bg: "bg-amber-500/10",
   },
-  {
-    id: "snapchat",
-    label: "Snapchat",
-    icon: Ghost,
-    color: "text-yellow-500",
-    bg: "bg-yellow-500/10",
-  },
 ];
 
 const getZernioPlatform = (slug: string) =>
@@ -1505,6 +1491,12 @@ const zernioErrorMessage = (error: unknown) => {
   if (error instanceof ZernioError) return error.message;
   if (error instanceof Error) return error.message;
   return "Something went wrong. Please try again.";
+};
+
+// apiFetch already toasts API failures, so avoid a second identical toast.
+const notifyZernioError = (error: unknown) => {
+  if (error instanceof ZernioError && error.status !== 404) return;
+  toast.error(zernioErrorMessage(error));
 };
 
 const formatRelativeTime = (value?: string | null) => {
@@ -1648,58 +1640,95 @@ const ZernioAccountsSection = ({
     let isMounted = true;
 
     const load = async () => {
+      const params = new URLSearchParams(window.location.search);
       const pendingRaw = sessionStorage.getItem(ZERNIO_PENDING_KEY);
-      const cameFromZernio = new URLSearchParams(
-        window.location.search,
-      ).has("zernio");
+      const connectedPlatform = params.get("connected");
+      const oauthError = params.get("error");
+      const oauthErrorMessage = params.get("error_message");
+      const returnedPlatform =
+        connectedPlatform || params.get("platform") || null;
+      const returnedUsername = params.get("username");
+      const cameFromZernio =
+        params.has("zernio") ||
+        params.has("connected") ||
+        params.has("error");
+
       let pending: {
         platform?: string;
         accountId?: number;
         accountIds?: number[];
+        startedAt?: number;
       } | null = null;
       let syncedAccounts: ZernioAccount[] | null = null;
 
       if (cameFromZernio) {
         const nextUrl = new URL(window.location.href);
-        nextUrl.searchParams.delete("zernio");
+        nextUrl.search = "";
         window.history.replaceState({}, "", nextUrl.toString());
       }
 
-      if (pendingRaw || cameFromZernio) {
-        const hadPending = Boolean(pendingRaw);
+      if (pendingRaw) {
         sessionStorage.removeItem(ZERNIO_PENDING_KEY);
-
-        if (pendingRaw) {
-          try {
-            pending = JSON.parse(pendingRaw);
-          } catch {
-            pending = null;
-          }
+        try {
+          pending = JSON.parse(pendingRaw);
+        } catch {
+          pending = null;
         }
 
+        if (
+          pending?.startedAt &&
+          Date.now() - pending.startedAt > ZERNIO_PENDING_TTL_MS
+        ) {
+          pending = null;
+        }
+      }
+
+      const hasFailure =
+        Boolean(oauthError) && oauthError !== "code_already_redeemed";
+
+      if (hasFailure) {
+        const platformLabel = returnedPlatform
+          ? getZernioPlatform(returnedPlatform)?.label || returnedPlatform
+          : "Social account";
+        toast.error(
+          oauthErrorMessage ||
+            `${platformLabel} connection failed (${oauthError})`,
+        );
+      }
+
+      if ((cameFromZernio || pending) && !hasFailure) {
         setIsSyncing(true);
         try {
           await syncZernioAccounts();
           syncedAccounts = await listZernioAccounts();
 
-          if (hadPending) {
-            const reconnected = pending?.accountId
+          if (connectedPlatform) {
+            const platformLabel =
+              getZernioPlatform(connectedPlatform)?.label ||
+              connectedPlatform;
+
+            toast.success(
+              pending?.accountId
+                ? `${platformLabel} reconnected`
+                : returnedUsername
+                  ? `${platformLabel} @${returnedUsername} connected`
+                  : `${platformLabel} connected`,
+            );
+          } else if (pending) {
+            const reconnected = pending.accountId
               ? syncedAccounts.some(
                   (account) =>
                     account.id === pending?.accountId &&
                     !account.needs_reconnect,
                 )
-              : false;
-            const connected = pending?.accountId
-              ? reconnected
               : syncedAccounts.some(
                   (account) =>
                     !(pending?.accountIds || []).includes(account.id),
                 );
 
-            if (connected) {
+            if (reconnected) {
               toast.success(
-                pending?.accountId
+                pending.accountId
                   ? "Account reconnected"
                   : "Social account connected",
               );
@@ -1708,7 +1737,7 @@ const ZernioAccountsSection = ({
             }
           }
         } catch (err) {
-          toast.error(zernioErrorMessage(err));
+          notifyZernioError(err);
         } finally {
           if (isMounted) setIsSyncing(false);
         }
@@ -1766,7 +1795,7 @@ const ZernioAccountsSection = ({
         toast.success("Social accounts are up to date");
       }
     } catch (err) {
-      toast.error(zernioErrorMessage(err));
+      notifyZernioError(err);
     } finally {
       setIsSyncing(false);
     }
@@ -1787,7 +1816,7 @@ const ZernioAccountsSection = ({
       );
       window.location.href = authUrl;
     } catch (err) {
-      toast.error(zernioErrorMessage(err));
+      notifyZernioError(err);
       setConnectingPlatform(null);
     }
   };
@@ -1809,7 +1838,7 @@ const ZernioAccountsSection = ({
       );
       window.location.href = authUrl;
     } catch (err) {
-      toast.error(zernioErrorMessage(err));
+      notifyZernioError(err);
       setReconnectingId(null);
     }
   };
@@ -1826,7 +1855,7 @@ const ZernioAccountsSection = ({
       toast.success("Social account disconnected");
       setDisconnectTarget(null);
     } catch (err) {
-      toast.error(zernioErrorMessage(err));
+      notifyZernioError(err);
     } finally {
       setIsDisconnecting(false);
     }
@@ -1949,7 +1978,9 @@ const ZernioAccountsSection = ({
             connected
           </div>
           <div className="flex items-center gap-1.5">
-            {reconnectCount > 0 ? (
+            {visibleAccounts.length === 0 ? (
+              <WifiOff size={12} className="text-textSecondary" />
+            ) : reconnectCount > 0 ? (
               <WifiOff size={12} className="text-amber-500" />
             ) : (
               <Wifi size={12} className="text-emerald-500" />
@@ -1957,9 +1988,11 @@ const ZernioAccountsSection = ({
             <span
               className={cn(reconnectCount > 0 && "text-amber-500")}
             >
-              {reconnectCount > 0
-                ? `${reconnectCount} need attention`
-                : "All healthy"}
+              {visibleAccounts.length === 0
+                ? "Not connected"
+                : reconnectCount > 0
+                  ? `${reconnectCount} need attention`
+                  : "All healthy"}
             </span>
           </div>
         </div>
@@ -2017,7 +2050,7 @@ const ZernioAccountsSection = ({
           />
           <div className="relative flex flex-col items-center">
             <div className="mb-4 flex -space-x-2">
-              {["instagram", "linkedin", "x", "youtube"].map((slug) => {
+              {["instagram", "linkedin", "twitter", "youtube"].map((slug) => {
                 const platform = getZernioPlatform(slug);
                 const Icon = platform?.icon || Globe;
                 return (
@@ -2741,7 +2774,7 @@ const MembersView = ({
               </div>
             </div>
 
-            {/* 
+            {/*
             <div
               className={cn(
                 "space-y-4 p-4 border border-border rounded-xl",
