@@ -14,7 +14,7 @@ from .models import (
     SyncRecord,
     Task,
 )
-
+from import_export.admin import ImportExportModelAdmin
 
 class IDDisplayMixin:
     def get_list_display(self, request):
@@ -67,7 +67,7 @@ class PersonAdmin(IDDisplayMixin, admin.ModelAdmin):
 
 
 @admin.register(PersonIdentity)
-class PersonIdentityAdmin(IDDisplayMixin, admin.ModelAdmin):
+class PersonIdentityAdmin(IDDisplayMixin, ImportExportModelAdmin):
     list_display = (
         "platform",
         "external_id",
