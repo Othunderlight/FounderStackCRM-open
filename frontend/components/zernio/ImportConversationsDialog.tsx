@@ -53,6 +53,7 @@ export const ImportConversationsDialog = ({
       const result = await importZernioConversationsToPeople({
         dryRun: true,
         createMissing: true,
+        updateExisting: true,
       });
       setPreview(result);
     } catch (err) {
@@ -71,6 +72,7 @@ export const ImportConversationsDialog = ({
       const result = await importZernioConversationsToPeople({
         dryRun: false,
         createMissing: true,
+        updateExisting: true,
       });
       onImported?.(result);
       onOpenChange(false);

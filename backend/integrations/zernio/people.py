@@ -86,12 +86,22 @@ def _create_person(conversation: ZernioConversation) -> Person:
         or _clean(conversation.participant_username)
         or f"{platform.title()} contact"
     )
-    return Person.objects.create(
+    person = Person.objects.create(
         organization=conversation.organization,
         name=name,
         avatar=_clean(conversation.participant_avatar),
         lead_source=platform.title(),
     )
+
+    # Stamp the person with the conversation's last message time so the CRM
+    # people list reflects "who did I talk to most recently" after an import.
+    # This only runs when the person is first created; later syncs and imports
+    # never touch it.
+    if conversation.last_message_at:
+        person.created_at = conversation.last_message_at
+        person.save(update_fields=["created_at"])
+
+    return person
 
 
 def link_conversation_to_person(

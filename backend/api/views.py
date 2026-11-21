@@ -1274,6 +1274,10 @@ class PersonViewSet(TenantMixin, BulkImportMixin, BaseViewSet):
     queryset = Person.objects.all()
     serializer_class = PersonSerializer
     permission_resource = "people"
+    # Default listing: most recently created first. Zernio imports stamp
+    # ``created_at`` with the conversation's last message time, so this is also
+    # "who did I talk to most recently".
+    ordering = ["-created_at"]
     required_permissions = {
         "timeline": "people.read",
     }

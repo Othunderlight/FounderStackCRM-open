@@ -288,6 +288,16 @@ match exists, and with `update_existing` (default) it repairs identities and
 names after Zernio resolves them. It is idempotent and supports `dry_run`,
 `limit`, `conversation_ids`, and `update_existing`.
 
+When the import creates a person, it stamps `Person.created_at` with the
+conversation's `last_message_at`, so the people list reflects the most recent
+conversation. Existing people are never re-stamped. `GET /api/people/` defaults
+to `-created_at` (newest first). Repair people imported before this rule with:
+
+```bash
+python manage.py zernio_backfill_person_created_at --dry-run
+python manage.py zernio_backfill_person_created_at
+```
+
 `GET /api/people/{id}/timeline/` returns a merged, newest-first timeline of
 `ActivityLog` rows and Zernio messages. Messages are read from the linked
 conversations and are not copied into `ActivityLog`. Message items require

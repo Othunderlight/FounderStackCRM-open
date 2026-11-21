@@ -107,6 +107,7 @@ export type ZernioImportPeopleResult = {
   total: number;
   linked: number;
   already_linked: number;
+  updated: number;
   created_people: number;
   skipped: number;
   errors: { conversation_id: string; error: string }[];
@@ -259,10 +260,15 @@ export const listZernioAccounts = async (params?: {
   return unwrapList(payload);
 };
 
-export const syncZernioAccounts = () =>
-  request<{ synced: number; results: ZernioAccount[] }>("/accounts/sync/", {
+export const syncZernioAccounts = (options: { inbox?: boolean } = {}) =>
+  request<{
+    synced: number;
+    results: ZernioAccount[];
+    conversations?: number;
+    inbox_error?: string;
+  }>("/accounts/sync/", {
     method: "POST",
-    body: JSON.stringify({}),
+    body: JSON.stringify({ inbox: options.inbox ?? true }),
   });
 
 export const getZernioConnectUrl = (
@@ -374,6 +380,7 @@ export const markZernioConversationRead = (conversationId: string) =>
 
 export const importZernioConversationsToPeople = (options: {
   createMissing?: boolean;
+  updateExisting?: boolean;
   dryRun?: boolean;
   limit?: number | null;
   conversationIds?: string[] | null;
@@ -382,6 +389,7 @@ export const importZernioConversationsToPeople = (options: {
     method: "POST",
     body: JSON.stringify({
       create_missing: options.createMissing ?? true,
+      update_existing: options.updateExisting ?? true,
       dry_run: options.dryRun ?? false,
       limit: options.limit ?? null,
       conversation_ids: options.conversationIds ?? null,

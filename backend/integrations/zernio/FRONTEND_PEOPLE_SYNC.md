@@ -199,6 +199,18 @@ Use `identities` to show platform badges or "Instagram: @handle" on the person
 profile. The person list also returns identities because the queryset is
 prefetched.
 
+### Person ordering and `created_at`
+
+`GET /api/people/` defaults to `-created_at` (newest first). When the import
+creates a person, `created_at` is stamped with the conversation's
+`last_message_at`, so the list reads as "who did I talk to most recently".
+Existing people keep their original `created_at`; syncs and re-imports never
+change it.
+
+Do not label `Person.created_at` as "Added to CRM" for imported people — it
+represents their last conversation time at import. `PersonIdentity.created_at`
+is still the real record-creation timestamp.
+
 ---
 
 ## 4. Conversation widget
@@ -555,6 +567,13 @@ provider's error until the account is reconnected. The account payload exposes
 > and manual notes. Duplicate chat messages created by the old webhook/API id
 > mismatch were merged; new messages are deduplicated on the platform message
 > id.
+>
+> **9. People list order**
+>
+> `GET /api/people/` defaults to `-created_at`. When the import creates a
+> person, `created_at` is set to the conversation's last message time, so the
+> list is "most recent conversation first". Do not display `created_at` as
+> "Added to CRM" for imported people.
 >
 > Full request/response shapes and TypeScript examples are in
 > `backend/integrations/zernio/FRONTEND_PEOPLE_SYNC.md`.

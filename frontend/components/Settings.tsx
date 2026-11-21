@@ -1697,10 +1697,17 @@ const ZernioAccountsSection = ({
   const handleSync = async () => {
     setIsSyncing(true);
     try {
-      await syncZernioAccounts();
+      const result = await syncZernioAccounts();
       const refreshed = await refresh();
       if (refreshed) {
-        toast.success("Social accounts are up to date");
+        if (result.inbox_error) {
+          toast.warning(`Accounts synced, but inbox sync failed: ${result.inbox_error}`);
+        } else {
+          const conversationCount = result.conversations ?? 0;
+          toast.success(
+            `Synced ${result.synced} account${result.synced === 1 ? "" : "s"} and ${conversationCount} conversation${conversationCount === 1 ? "" : "s"}`,
+          );
+        }
       }
     } catch (err) {
       notifyZernioError(err);
