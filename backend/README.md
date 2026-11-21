@@ -262,6 +262,12 @@ Set `ZERNIO_API_KEY`, `ZERNIO_API_BASE_URL`, and `ZERNIO_WEBHOOK_SECRET` in
 inbox mirror. An Inngest cron (`zernio_sync_all`, hourly) refreshes accounts,
 conversations, and analytics.
 
+`POST /api/integrations/zernio/accounts/sync/` and
+`POST /api/integrations/zernio/profiles/sync/` both mirror the full inbox, so
+they recover conversations created while the webhook was down. Send
+`{"inbox": false}` to the accounts endpoint to skip the inbox. After a sync,
+run the people import to link the newly mirrored conversations.
+
 Verify the webhook receiver with a signed test event:
 
 ```bash

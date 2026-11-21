@@ -5,6 +5,7 @@ import hmac
 import json
 import logging
 from datetime import date
+from typing import Any
 
 from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -182,7 +183,7 @@ class ZernioProfileViewSet(ZernioTenantMixin, viewsets.ModelViewSet):
                     sync_conversations(
                         profile,
                         status=request.data.get("status") or None,
-                        limit=int(request.data.get("limit", 50)),
+                        limit=int(request.data.get("limit", 100)),
                     )
                 )
             except ZernioAPIError as exc:
@@ -301,12 +302,32 @@ class ZernioAccountViewSet(
             sync_account_health(profile)
         except ZernioAPIError as exc:
             return _error_response(exc)
-        return Response(
-            {
-                "synced": len(accounts),
-                "results": self.get_serializer(accounts, many=True).data,
-            }
-        )
+
+        result: dict[str, Any] = {
+            "synced": len(accounts),
+            "results": self.get_serializer(accounts, many=True).data,
+        }
+
+        # The settings "Sync" button calls this endpoint. Mirror the inbox here
+        # as well, otherwise conversations that arrived while the webhook was
+        # down never reach the local mirror. Clients can opt out with
+        # ``{"inbox": false}``.
+        if request.data.get("inbox", True):
+            try:
+                limit = int(request.data.get("limit", 100))
+                result["conversations"] = len(
+                    sync_conversations(
+                        profile,
+                        status=request.data.get("status") or None,
+                        limit=limit,
+                    )
+                )
+            except (TypeError, ValueError):
+                result["inbox_error"] = "limit must be an integer."
+            except ZernioAPIError as exc:
+                result["inbox_error"] = exc.message
+
+        return Response(result)
 
     @action(detail=False, methods=["get"], url_path="health")
     def health(self, request):
@@ -439,7 +460,7 @@ class ZernioConversationViewSet(ZernioTenantMixin, viewsets.ReadOnlyModelViewSet
             conversations = sync_conversations(
                 profile,
                 status=request.data.get("status") or None,
-                limit=int(request.data.get("limit", 50)),
+                limit=int(request.data.get("limit", 100)),
             )
         except ZernioAPIError as exc:
             return _error_response(exc)

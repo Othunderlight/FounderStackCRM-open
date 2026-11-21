@@ -34,6 +34,34 @@ JWT auth from `lib/api.ts`.
 | `GET /api/integrations/zernio/conversations/` | Adds `person`, `identity`, `person_name`; adds `?person=<uuid>` and `?linked=true\|false` filters. |
 | `GET /api/integrations/zernio/conversations/{id}/` | Same new fields. |
 | `GET /api/activities/` and `GET /api/people/{id}/context/` | Adds `conversation` to activity rows. |
+| `POST /api/integrations/zernio/accounts/sync/` | Now also mirrors the inbox. Returns `conversations` and, on partial failure, `inbox_error`. Pass `{"inbox": false}` to sync accounts only. |
+| `POST /api/integrations/zernio/profiles/sync/` | Already mirrored the inbox; now uses the same 100-row pages and write-skipping as the other sync paths. |
+
+### Sync button behavior
+
+The Settings **Sync** button calls `POST /api/integrations/zernio/accounts/sync/`.
+It now:
+
+1. Refreshes accounts and account health.
+2. Paginates the full Zernio inbox (100 per page) and upserts conversations.
+3. Returns:
+
+```json
+{
+  "synced": 1,
+  "results": [ ...accounts... ],
+  "conversations": 780,
+  "inbox_error": null
+}
+```
+
+After a Sync, run the import to link any newly mirrored conversations. If the
+webhook was down, this is the recovery path: **Sync → Import**. The hourly
+Inngest job (`zernio_sync_all`) does the same sync automatically when it is
+running.
+
+A full inbox pass currently takes about 5–7 seconds for 780 conversations.
+Unchanged rows are not rewritten.
 
 ---
 
@@ -460,7 +488,16 @@ provider's error until the account is reconnected. The account payload exposes
 > The backend now links Zernio conversations to CRM people, and we fixed the
 > message duplication and name-sync issues. Here is what you need to build.
 >
-> **1. New manual import button**
+> **1. The Sync button now mirrors the inbox**
+>
+> `POST /api/integrations/zernio/accounts/sync/` now returns
+> `{ synced, results, conversations, inbox_error }`. After a webhook outage the
+> recovery path is **Sync → Import**: Sync pulls the conversations Zernio
+> accumulated while the webhook was down, then Import links them to people.
+> A full pass over ~780 conversations takes about 5–7 seconds. Show
+> `conversations` in the success toast and `inbox_error` as a warning.
+>
+> **2. Manual import button**
 >
 > Endpoint: `POST /api/integrations/zernio/conversations/import-people/`
 >
@@ -472,12 +509,12 @@ provider's error until the account is reconnected. The account payload exposes
 > preview counts, then again with `dry_run: false` to apply. Show `total`,
 > `linked`, `created_people`, and `updated` in a toast.
 >
-> **2. Person payload**
+> **3. Person payload**
 >
 > `GET /api/people/{id}/` now returns `identities[]` — the Instagram/WhatsApp
 > handles linked to that person. Use them for platform badges.
 >
-> **3. Conversation widget**
+> **4. Conversation widget**
 >
 > List a person's threads with
 > `GET /api/integrations/zernio/conversations/?person={personId}`.
@@ -487,7 +524,7 @@ provider's error until the account is reconnected. The account payload exposes
 > `?refresh=false` to read the local mirror only (useful when the account needs
 > reconnect).
 >
-> **4. Activity log widget**
+> **5. Activity log widget**
 >
 > The existing `/api/activities/` endpoint is unchanged. Activity rows now have
 > an optional `conversation` field. For a merged timeline of activities and
@@ -498,20 +535,20 @@ provider's error until the account is reconnected. The account payload exposes
 > `people.read`. Without `agent.use`, `source=all` returns activities only and
 > `source=messages` returns `403` with `code: "messages_permission_denied"`.
 >
-> **5. Unlinked count**
+> **6. Unlinked count**
 >
 > `GET /api/integrations/zernio/conversations/?linked=false&limit=1` returns the
 > number of unlinked conversations in `count`. Use `linked=true` for the linked
 > count.
 >
-> **6. Sending messages**
+> **7. Sending messages**
 >
 > `POST /conversations/{id}/messages/` returns provider errors with a structured
 > body. A `403` with `code: "platform_api_error"` is usually a Meta restriction,
 > such as the 24-hour reply window. Show `detail` to the user; do not treat it as
 > an expired session. The body also includes `platform` and `platformError`.
 >
-> **7. No duplication**
+> **8. No duplication**
 >
 > Messages are not copied into `ActivityLog`. The timeline endpoint reads them
 > from the linked conversations. The activity log stays for calls, meetings,

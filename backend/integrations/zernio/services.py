@@ -346,13 +346,18 @@ def _ensure_conversation(
     if not isinstance(participant, dict):
         participant = {}
 
-    existing = ZernioConversation.objects.filter(
-        conversation_id=conversation_id
-    ).first()
+    existing = (
+        ZernioConversation.objects.select_related("organization", "profile", "account")
+        .filter(conversation_id=conversation_id)
+        .first()
+    )
     if existing is None:
         # Self-heal rows created before webhook ids were canonicalized.
         existing = (
-            ZernioConversation.objects.filter(
+            ZernioConversation.objects.select_related(
+                "organization", "profile", "account"
+            )
+            .filter(
                 profile=profile,
                 metadata__platformConversationId=conversation_id,
             )
@@ -364,7 +369,6 @@ def _ensure_conversation(
         "organization": profile.organization,
         "profile": profile,
         "conversation_id": conversation_id,
-        "last_synced_at": timezone.now(),
         "metadata": {**(existing.metadata if existing else {}), **payload},
     }
 
@@ -428,6 +432,13 @@ def _ensure_conversation(
     if participant_avatar:
         values["participant_avatar"] = participant_avatar
 
+    raw_unread = payload.get("unreadCount")
+    if raw_unread is not None:
+        try:
+            values["unread_count"] = max(0, int(raw_unread))
+        except (TypeError, ValueError):
+            pass
+
     if last_message is not None:
         values["last_message_text"] = last_message
     elif _first(payload, "lastMessage"):
@@ -441,11 +452,22 @@ def _ensure_conversation(
         values["last_message_at"] = parsed_last_message_at
 
     if existing:
+        # Skip the UPDATE when nothing changed. A full inbox pass touches 700+
+        # rows; writing every one on every sync made the request slow for no
+        # benefit.
+        changed: list[str] = []
         for key, value in values.items():
-            setattr(existing, key, value)
-        existing.save()
+            if getattr(existing, key) != value:
+                setattr(existing, key, value)
+                changed.append(key)
+        if changed:
+            existing.last_synced_at = timezone.now()
+            existing.save(
+                update_fields=[*changed, "last_synced_at", "updated_at"]
+            )
         return existing
 
+    values["last_synced_at"] = timezone.now()
     return ZernioConversation.objects.create(**values)
 
 
@@ -556,7 +578,7 @@ def sync_conversations(
     *,
     client: ZernioClient | None = None,
     status: str | None = None,
-    limit: int = 50,
+    limit: int = 100,
     max_pages: int = 20,
 ) -> list[ZernioConversation]:
     client = client or get_zernio_client()

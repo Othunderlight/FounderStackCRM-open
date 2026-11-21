@@ -1,8 +1,6 @@
 import logging
-from datetime import datetime, timedelta
 
 import inngest
-from django.utils import timezone
 
 from .client import inngest_client
 
@@ -38,7 +36,7 @@ def zernio_sync_all(ctx: inngest.Context):
             result["accounts_error"] = exc.message
 
         try:
-            result["conversations"] = len(sync_conversations(profile, limit=50))
+            result["conversations"] = len(sync_conversations(profile, limit=100))
         except ZernioAPIError as exc:
             result["inbox_error"] = exc.message
 
